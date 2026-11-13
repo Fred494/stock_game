@@ -10,6 +10,7 @@ import { prefetchNews } from './news.js';
 const games = loadAll();
 const dirty = new Set();
 const PUBLIC = path.join(ROOT, 'public');
+const BUILD = String(Date.now()); // changes on every server start: open pages reload themselves
 const MIME = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json',
@@ -83,9 +84,9 @@ async function api(req, res, url) {
     }
 
     if (req.method === 'GET' && sub === 'state') {
-      if (G.isHost(game, tok)) return send(res, 200, G.hostView(game));
+      if (G.isHost(game, tok)) return send(res, 200, { ...G.hostView(game), build: BUILD });
       const p = G.findPlayerByToken(game, tok);
-      if (p) return send(res, 200, G.playerView(game, p));
+      if (p) return send(res, 200, { ...G.playerView(game, p), build: BUILD });
       return send(res, 401, { error: 'Sessão desconhecida', code: 'unauthorized' });
     }
 

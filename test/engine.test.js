@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as G from '../src/game.js';
-import { buildMarket, CEILING, TIER } from '../src/market.js';
+import { buildMarket, NOISE } from '../src/market.js';
+import { EVENTS } from '../src/events.js';
 import { STOCKS } from '../src/stocks.js';
 import { quoteSell, quoteBuy, applyBuy, applySell, taxRate } from '../src/trading.js';
 import { toCents, MICRO } from '../src/money.js';
@@ -128,7 +129,7 @@ test('market is reproducible, bounded and varied', () => {
   for (let r = 1; r <= 12; r++) {
     for (const s of STOCKS) {
       const ret = a.path[r][s.id] / a.path[r - 1][s.id] - 1;
-      const cap = Math.max(TIER[s.vol].ord, CEILING[r - 1] * TIER[s.vol].news) / 100;
+      const cap = (Math.abs(EVENTS[r - 1].moves[s.id] || 0) + NOISE[s.vol]) / 100;
       assert.ok(Math.abs(ret) <= cap + 0.0015, `${s.id} r${r} ${ret}`);
       if (ret > 0.001) ups++; else if (ret < -0.001) downs++;
     }

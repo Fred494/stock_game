@@ -25,6 +25,7 @@ async function poll() {
   if (!session) return;
   try {
     S = await api(`/api/games/${session.code}/state`, { token: session.token });
+    if (S.build) { if (window.__build && window.__build !== S.build) { location.reload(); return; } window.__build = S.build; }
     const key = JSON.stringify({ ...S, serverNow: 0, remainingMs: 0, countdownMs: S.countdownMs == null ? null : 1 });
     clockAt = performance.now() + S.remainingMs; clockTotal = Math.max(1, S.totalMs);
     if (key !== sig) { sig = key; render(); }
@@ -110,7 +111,7 @@ function newsCard() {
   const real = n.real ? `<div class="card" style="margin-top:10px;background:var(--bg)"><span class="tag">REAL-WORLD COVERAGE</span><p style="margin:6px 0 2px"><b>${esc(n.real.headline)}</b></p><span class="muted" style="font-size:12px">${esc(n.real.publisher)} · ${n.real.publishedAt ? esc(new Date(n.real.publishedAt).toLocaleDateString()) : ''} · <a href="${esc(n.real.url)}" target="_blank" rel="noopener noreferrer">source</a></span></div>` : '';
   return `<div class="card news pop"><span class="tag fict">PRACTICE SCENARIO · FICTIONAL</span> <span class="tag">Round ${n.round}</span>
     <h3>${esc(n.headline)}</h3>
-    ${full ? `<p>${esc(n.summary)}</p><p class="muted" style="font-size:13px">Learn: ${esc(n.teaches)}</p><p class="muted" style="font-size:13px">Stocks in the spotlight: ${n.relevant.slice(0, 8).map((id) => esc(id)).join(', ')}${n.relevant.length > 8 ? '…' : ''}</p>${real}`
+    ${full ? `<p>${(n.extras && n.extras.length ? n.extras : [n.summary]).map((x) => esc(x)).join("<br>")}</p><p class="muted" style="font-size:13px">Learn: ${esc(n.teaches)}</p><p class="muted" style="font-size:13px">Stocks in the spotlight: ${n.relevant.slice(0, 8).map((id) => esc(id)).join(', ')}${n.relevant.length > 8 ? '…' : ''}</p>${real}`
       : `<p class="muted" style="font-size:13px;margin:0">${esc(n.title)}</p>`}</div>`;
 }
 

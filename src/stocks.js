@@ -1,4 +1,4 @@
-// The 21 playable companies. Starting prices are DEMO reference prices in EUR (simulated, clearly labelled).
+// The 24 playable companies. Starting prices are DEMO reference prices in EUR (simulated, clearly labelled).
 // providerSymbol is the ticker a market-data provider (Yahoo/Finnhub style) expects.
 const S = (id, name, ticker, listing, providerSymbol, vol, sector, domain, demoPriceEUR) => ({
   id, name, ticker, listing, providerSymbol, vol, sector, domain,
@@ -28,6 +28,9 @@ export const STOCKS = [
   S('PM', 'Philip Morris International', 'PM', 'NYSE', 'PM', 'low', 'staples', 'pmi.com', 105),
   S('2222', 'Saudi Aramco', '2222', 'Saudi Arabia', '2222.SR', 'medium', 'energy', 'aramco.com', 7.1),
   S('WMT', 'Walmart', 'WMT', 'NYSE', 'WMT', 'low', 'retail', 'walmart.com', 72),
+  S('ZM', 'Zoom', 'ZM', 'NASDAQ', 'ZM', 'high', 'bigtech', 'zoom.us', 70),
+  S('NFLX', 'Netflix', 'NFLX', 'NASDAQ', 'NFLX', 'high', 'bigtech', 'netflix.com', 640),
+  S('RYA', 'Ryanair', 'RYA', 'Dublin', 'RYA.IR', 'high', 'travel', 'ryanair.com', 17),
 ];
 export const STOCK_BY_ID = Object.fromEntries(STOCKS.map((s) => [s.id, s]));
 

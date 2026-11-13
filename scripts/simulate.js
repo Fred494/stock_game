@@ -21,7 +21,7 @@ const buyAmt = (g, p, id, amt) => { amt = Math.min(Math.floor(amt), p.cash); if 
 // Each strategy trades during the trading phase. `ev` is the PUBLIC event (a skilled player can read the tone).
 const strategies = {
   'Cash only': () => {},
-  'Buy & hold all 21': (g, p) => { if (g.round === 1) for (const s of STOCKS) buyAmt(g, p, s.id, p.cash / 21 * 0.99); },
+  'Buy & hold all': (g, p) => { if (g.round === 1) for (const s of STOCKS) buyAmt(g, p, s.id, p.cash / STOCKS.length * 0.99); },
   'Defensive low-vol': (g, p) => { if (g.round === 1) for (const id of LOW) buyAmt(g, p, id, p.cash / LOW.length * 0.99); },
   'News reader (skilled)': (g, p) => {
     const ev = EVENTS[g.round - 1];
@@ -40,7 +40,7 @@ const strategies = {
   },
   'Random trader': (g, p, rng) => {
     for (let i = 0; i < 3; i++) {
-      const s = STOCKS[Math.floor(rng() * 21)];
+      const s = STOCKS[Math.floor(rng() * STOCKS.length)];
       if (rng() < 0.5 || positionQty(p, s.id) === 0) buyAmt(g, p, s.id, p.cash * rng() * 0.25);
       else sellAll(g, p, s.id);
     }
@@ -98,7 +98,7 @@ for (let n = 0; n < N; n++) {
   const useB = n % 2 === 1;
   const budgets = [...BUDGETS].sort(() => rng() - 0.5);
   const roster = useB
-    ? [['News reader (skilled)', null], ['News reader (skilled)', 'oracle'], ['News reader (skilled)', 'shield'], ['News reader (skilled)', 'rocket'], ['Buy & hold all 21', null], ['Random trader', null]]
+    ? [['News reader (skilled)', null], ['News reader (skilled)', 'oracle'], ['News reader (skilled)', 'shield'], ['News reader (skilled)', 'rocket'], ['Buy & hold all', null], ['Random trader', null]]
     : NAMES.map((s) => [s, null]);
   const { game, players, res } = playGame(seed, roster.map(([strategy, pu], i) => ({ strategy, pu, budget: budgets[i] })));
   const winner = res.players[0];

@@ -41,7 +41,7 @@ test('end-to-end over HTTP: join, budgets, play, host-only, privacy, reconnect',
   let s = (await call('GET', `/api/games/${code}/state`, null, a.token)).body;
   assert.equal(s.phase, 'news');
   assert.equal(s.me.cash, 12_500_000);
-  assert.equal(s.stocks.length, 21);
+  assert.equal(s.stocks.length, 24);
   assert.ok(!JSON.stringify(s).includes('"path"'));
 
   await call('POST', `/api/games/${code}/host`, { action: 'nextPhase' }, hostToken);
@@ -65,5 +65,5 @@ test('end-to-end over HTTP: join, budgets, play, host-only, privacy, reconnect',
   const h = (await call('GET', `/api/games/${code}/state`, null, hostToken)).body;
   assert.equal(h.phase, 'reaction');
   assert.equal(h.leaderboard.length, 2);
-  assert.equal(h.lastSettlement.moves.length, 21);
+  assert.equal(h.lastSettlement.moves.length, 24);
 });

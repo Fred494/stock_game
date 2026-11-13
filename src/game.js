@@ -349,7 +349,7 @@ function newsView(game, round) {
   const real = game.news[round - 1].real;
   return {
     round, title: ev.title, headline: ev.headline, summary: ev.summary, teaches: ev.teaches,
-    relevant: ev.relevant,
+    relevant: ev.relevant, extras: ev.extras || [],
     scenario: { fictional: true, note: 'Cenário do jogo: uma história fictícia de prática. As reações das ações são simuladas.' },
     real, // real-world article (headline, publisher, date, url) or null
   };
