@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ElvaStocks - A Multiplayer Stock Market Game</title>
+<meta name="description" content="ElvaStocks: a real-time multiplayer stock market simulation where news drives prices, gains are taxed and power-ups shake up the race.">
+<link rel="stylesheet" href="common.css">
+<link rel="stylesheet" href="landing.css">
+<link rel="icon" href="favicon.svg">
+</head>
+<body>
+<header class="nav"><div class="wrap row"><span class="brand">ELVA<b>STOCKS</b></span><span class="grow"></span>
+  <a href="#how">How it works</a><a href="#rules">Rules</a><a href="#tech">Tech</a><a href="#resume">Résumé</a></div></header>
+
+<section class="hero wrap">
+  <p class="eyebrow">ELVASTOCKS · MULTIPLAYER STOCK MARKET GAME</p>
+  <h1>Trade the news.<br><span class="grad">Beat your friends.</span></h1>
+  <p class="lead">Up to 6 players invest virtual euros in 21 real companies, react to a new market event every round, pay capital-gains tax on their profits and race to the highest portfolio after 12 rounds. Phones for players, a control centre for the host.</p>
+  <div class="cta">
+    <a class="btn green" id="hostBtn" href="host.html">Host a game</a>
+    <a class="btn" id="joinBtn" href="play.html">Join with a code</a>
+  </div>
+  <p class="status muted" id="status" role="status"></p>
+  <div class="facts">
+    <div><b>6</b><span>players per room</span></div><div><b>12</b><span>market events</span></div><div><b>21</b><span>companies</span></div><div><b>60</b><span>minutes (or quick demo)</span></div>
+  </div>
+</section>
+
+<section class="wrap" id="how">
+  <h2>How a round works</h2>
+  <div class="steps">
+    <div class="card"><span class="n">1</span><h3>News &amp; Analysis · 60 s</h3><p class="muted">A headline appears with an explanation and the industries involved. Players think about who wins and who loses. Future price moves stay hidden.</p></div>
+    <div class="card"><span class="n">2</span><h3>Trading · 60 s</h3><p class="muted">Prices are frozen. Buy or sell any of the 21 stocks in euro amounts, fractional shares allowed. Tap <b>I'm Ready</b> to finish early.</p></div>
+    <div class="card"><span class="n">3</span><h3>Market Reaction · 120 s</h3><p class="muted">The server reveals the simulated price moves, explains why each stock moved and updates the leaderboard.</p></div>
+  </div>
+  <p class="muted">The host assigns every player's starting budget, can pause, run the clock at 1×/2×/4×, and skip phases. All timing and money logic lives on the server.</p>
+</section>
+
+<section class="wrap" id="rules">
+  <h2>Rules at a glance</h2>
+  <div class="two">
+    <div class="card"><h3>💶 Capital-gains tax (in-game)</h3>
+      <table><tr><td>Sold at a profit, held under 4 rounds</td><td class="r"><b class="down">28%</b></td></tr><tr><td>Held 4 or more full rounds</td><td class="r"><b class="up">20%</b></td></tr><tr><td>Sold at a loss</td><td class="r"><b>0%, no refund</b></td></tr></table>
+      <p class="muted">Lots are sold first-in-first-out and taxed one by one. Game mechanics only: not tax advice.</p></div>
+    <div class="card"><h3>⚡ Power-ups after round 6 (€5,000 each, max one)</h3>
+      <p>🔮 <b>The Oracle</b>: privately learn if one stock goes UP, DOWN or FLAT.</p><p>🛡️ <b>Crash Shield</b>: reimburses market losses up to €10,000.</p><p>🚀 <b>Profit Rocket</b>: bonus of 2× a stock's gain on up to €50,000 (max €15,000).</p></div>
+  </div>
+  <div class="card" style="margin-top:16px"><h3>The 12 events</h3>
+    <div class="events">
+      <span>1 Inflation Shock</span><span>2 AI Boom</span><span>3 Oil Supply Disruption</span><span>4 Chip Supply Chain Disruption</span><span>5 Earnings Surprise</span><span>6 Central Bank Decision</span>
+      <span>7 Pharma Breakthrough</span><span>8 Consumer Spending Shift</span><span>9 Space Industry Development</span><span>10 Big Tech Regulation</span><span>11 Chip Export Restrictions</span><span>12 Global Market Finale</span>
+    </div>
+    <p class="muted">Each one teaches a real finance idea. News effects are bounded and reproducible from a server-side seed, and some reactions go the "wrong" way because the news was already priced in, just like real markets.</p></div>
+  <div class="card" style="margin-top:16px"><h3>Honest data labelling</h3><p class="muted">Company logos are fetched from public favicon services. Starting prices in demo mode are simulated reference values and are labelled as such. Headlines in the practice scenarios are fictional; an optional GDELT integration adds clearly separated, linked real-world coverage. Stock reactions are always simulated.</p></div>
+</section>
+
+<section class="wrap" id="tech">
+  <h2>Under the hood</h2>
+  <div class="two">
+    <div class="card"><h3>Server-authoritative engine</h3><ul><li>Node.js game server, zero-framework HTTP API with polling sync</li><li>Phase state machine with a server clock, pause and 1×/2×/4× speed</li><li>Money in integer cents, shares in micro-units: no floating-point drift</li><li>FIFO tax lots, idempotent orders and one-time round settlement</li><li>Seeded PRNG market built from market + sector + news + noise</li><li>Hashed player and host tokens; future returns never leave the server</li></ul></div>
+    <div class="card"><h3>Quality</h3><ul><li>Automated tests for tax, FIFO, power-ups, readiness, pause, privacy and a full HTTP game</li><li>1,000-game strategy simulation to balance volatility and power-ups</li><li>Mobile-first UI, reduced-motion support, optional sound and haptics</li><li>GitHub Actions: tests on every push, site deployed to GitHub Pages</li></ul></div>
+  </div>
+</section>
+
+<section class="wrap" id="resume">
+  <h2>Project summary <span class="muted" style="font-size:16px">(copy-paste for your résumé)</span></h2>
+  <div class="card">
+    <h3 id="rt">ElvaStocks: Real-time Multiplayer Stock Market Game</h3>
+    <p class="muted" id="rs">Full-stack educational game for up to 6 players per room · JavaScript, Node.js, HTML/CSS · Solo project</p>
+    <ul id="rl">
+      <li>Designed and built a server-authoritative multiplayer trading game with a host control centre and a mobile-first player app, covering lobby, 12 timed rounds, a power-up shop and a final results screen.</li>
+      <li>Implemented a reproducible market simulation (market, sector, news and bounded random effects across volatility tiers) driven by a seeded generator, keeping future prices hidden from clients.</li>
+      <li>Built a trading engine in integer-cent arithmetic with FIFO tax lots, two-tier capital-gains tax, idempotent orders and exactly-once round settlement.</li>
+      <li>Wrote automated tests and a 1,000-game strategy simulation to balance volatility and power-ups; shipped CI and GitHub Pages deployment.</li>
+    </ul>
+    <button class="btn ghost sm" id="copy">Copy as text</button> <span class="muted" id="copied"></span>
+    <p class="muted" style="font-size:13px">Edit the text in <code>public/index.html</code> (section “resume”) to match your role and results.</p>
+  </div>
+</section>
+
+<footer class="wrap muted">ElvaStocks is an independent educational game. Simulated markets, virtual money, not financial or tax advice.</footer>
+<script src="config.js"></script>
+<script>
+(function () {
+  var api = (window.MM_API || '').replace(/\/$/, '');
+  var st = document.getElementById('status');
+  fetch(api + '/api/health').then(function (r) { return r.json(); }).then(function () {
+    st.textContent = '● Game server online';
+  }).catch(function () {
+    st.innerHTML = 'Game server not reachable from this page. Run it with <code>npm start</code> (see README) or set <code>APP_URL</code> for the deployed site.';
+  });
+  document.getElementById('copy').onclick = function () {
+    var t = document.getElementById('rt').textContent + '\n' + document.getElementById('rs').textContent + '\n' +
+      Array.prototype.map.call(document.querySelectorAll('#rl li'), function (l) { return '- ' + l.textContent; }).join('\n');
+    (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { document.getElementById('copied').textContent = 'Copied!'; }, function () { document.getElementById('copied').textContent = 'Select and copy manually.'; });
+  };
+})();
+</script>
+</body>
+</html>
