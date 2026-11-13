@@ -4,7 +4,7 @@ import {
   READY_COUNTDOWN_MS, TIMING, DEFAULT_BUDGET,
 } from './config.js';
 import { STOCKS, STOCK_BY_ID, FX_SNAPSHOT } from './stocks.js';
-import { EVENTS } from './events.js';
+import { EVENTS, OPENING } from './events.js';
 import { buildMarket, roundReturn, direction } from './market.js';
 import { MICRO, valueCents, toCents } from './money.js';
 import { quoteBuy, quoteSell, applyBuy, applySell, positionQty, wealth, taxRate, REDUCED_RATE, STANDARD_RATE } from './trading.js';
@@ -66,11 +66,11 @@ export function addPlayer(game, { name, avatar, token: existing }) {
     const p = findPlayerByToken(game, existing);
     if (p) { p.lastSeen = Date.now(); return { player: p, token: existing, reconnected: true }; }
   }
-  if (game.status !== 'lobby') fail('started', 'This game has already started.');
+  if (game.status !== 'lobby') fail('started', 'Este jogo já começou.');
   const n = cleanName(name);
-  if (n.length < 1) fail('bad_name', 'Please enter a name.');
-  if (game.players.length >= MAX_PLAYERS) fail('full', 'This room is full (6 players).');
-  if (game.players.some((p) => p.name.toLowerCase() === n.toLowerCase())) fail('name_taken', 'That name is already taken in this room.');
+  if (n.length < 1) fail('bad_name', 'Escreve um nome.');
+  if (game.players.length >= MAX_PLAYERS) fail('full', 'Esta sala está cheia (6 jogadores).');
+  if (game.players.some((p) => p.name.toLowerCase() === n.toLowerCase())) fail('name_taken', 'Esse nome já está a ser usado nesta sala.');
   const t = token();
   const color = AVATARS.includes(avatar) ? avatar : AVATARS[game.players.length % AVATARS.length];
   const p = {
@@ -83,26 +83,26 @@ export function addPlayer(game, { name, avatar, token: existing }) {
 }
 
 export function setBudget(game, playerId, euros) {
-  if (game.status !== 'lobby') fail('locked', 'Budgets are locked once the game starts.');
-  const p = game.players.find((x) => x.id === playerId) || fail('no_player', 'Unknown player.');
+  if (game.status !== 'lobby') fail('locked', 'Os orçamentos ficam bloqueados quando o jogo começa.');
+  const p = game.players.find((x) => x.id === playerId) || fail('no_player', 'Jogador desconhecido.');
   const c = toCents(euros);
-  if (!Number.isFinite(c) || c < 0 || c > 1e12) fail('bad_budget', 'Budget must be a non-negative number.');
+  if (!Number.isFinite(c) || c < 0 || c > 1e12) fail('bad_budget', 'O orçamento tem de ser um número positivo.');
   p.budget = c;
 }
 export function resetBudgets(game) {
-  if (game.status !== 'lobby') fail('locked', 'Budgets are locked once the game starts.');
+  if (game.status !== 'lobby') fail('locked', 'Os orçamentos ficam bloqueados quando o jogo começa.');
   for (const p of game.players) p.budget = DEFAULT_BUDGET * 100;
 }
 export function removePlayer(game, playerId) {
-  if (game.status !== 'lobby') fail('locked', 'Players can only be removed before the game starts.');
+  if (game.status !== 'lobby') fail('locked', 'Só é possível remover jogadores antes de o jogo começar.');
   game.players = game.players.filter((p) => p.id !== playerId);
 }
 
 export function startGame(game) {
-  if (game.status !== 'lobby') fail('started', 'Game already started.');
-  if (game.players.length < 1) fail('no_players', 'At least one player is needed.');
+  if (game.status !== 'lobby') fail('started', 'O jogo já começou.');
+  if (game.players.length < 1) fail('no_players', 'É preciso pelo menos um jogador.');
   for (const p of game.players) {
-    if (p.budget == null || !Number.isFinite(p.budget) || p.budget < 0) fail('no_budget', `Assign a starting budget to ${p.name}.`);
+    if (p.budget == null || !Number.isFinite(p.budget) || p.budget < 0) fail('no_budget', `Atribui um orçamento inicial a ${p.name}.`);
   }
   for (const p of game.players) { p.startCash = p.budget; p.cash = p.budget; }
   game.status = 'running';
@@ -173,9 +173,9 @@ export function settleRound(game) {
     let why = null;
     if (sens !== 0) {
       why = ev.roles[s.id] || '';
-      if (mr.reversed) why = `Although the news looked ${sens > 0 ? 'positive' : 'negative'} for it, investors had already priced it in and the market reacted the other way. ${why}`;
+      if (mr.reversed) why = `Apesar de a notícia parecer ${sens > 0 ? 'positiva' : 'negativa'} para ela, os investidores já a tinham refletido no preço e o mercado reagiu ao contrário. ${why}`;
     } else if (Math.abs(ret) >= 0.005) {
-      why = 'Not directly tied to the news: moved with the overall market and its sector.';
+      why = 'Sem ligação direta à notícia: acompanhou o mercado em geral e o seu setor.';
     }
     return { id: s.id, price: newP[s.id], prevPrice: oldP[s.id], pct: ret, direct: sens !== 0, why };
   });
@@ -186,11 +186,11 @@ export function settleRound(game) {
 }
 
 export function advance(game, { confirm = false } = {}) {
-  if (game.status !== 'running') fail('not_running', 'Game is not running.');
+  if (game.status !== 'running') fail('not_running', 'O jogo não está a decorrer.');
   switch (game.phase) {
     case 'news': enterPhase(game, 'trading'); break;
     case 'trading': {
-      if (!confirm && game.players.some((p) => !p.ready && connected(p))) fail('confirm_required', 'Some players have not finished trading. Skip anyway?');
+      if (!confirm && game.players.some((p) => !p.ready && connected(p))) fail('confirm_required', 'Alguns jogadores ainda não terminaram de negociar. Avançar mesmo assim?');
       settleRound(game);
       enterPhase(game, 'reaction');
       break;
@@ -201,14 +201,14 @@ export function advance(game, { confirm = false } = {}) {
       else enterPhase(game, 'news', game.round + 1);
       break;
     case 'shop': snapshot(game); enterPhase(game, 'news', game.round + 1); break;
-    default: fail('bad_phase', 'Nothing to advance.');
+    default: fail('bad_phase', 'Nada para avançar.');
   }
 }
 
 export function nextRound(game, opts = {}) {
-  if (game.status !== 'running') fail('not_running', 'Game is not running.');
+  if (game.status !== 'running') fail('not_running', 'O jogo não está a decorrer.');
   if (game.phase === 'trading' && !opts.confirm && game.players.some((p) => !p.ready && connected(p))) {
-    fail('confirm_required', 'Some players have not finished trading. Skip anyway?');
+    fail('confirm_required', 'Alguns jogadores ainda não terminaram de negociar. Avançar mesmo assim?');
   }
   if (game.phase === 'news' || game.phase === 'trading') { settleRound(game); enterPhase(game, 'reaction'); }
   advance(game, { confirm: true });
@@ -227,7 +227,7 @@ export function finishGame(game) {
 
 export function setPaused(game, paused) { if (game.status === 'running') game.paused = !!paused; }
 export function setSpeed(game, s) {
-  if (![1, 2, 4].includes(Number(s))) fail('bad_speed', 'Speed must be 1, 2 or 4.');
+  if (![1, 2, 4].includes(Number(s))) fail('bad_speed', 'A velocidade tem de ser 1, 2 ou 4.');
   game.speed = Number(s);
 }
 
@@ -254,19 +254,18 @@ export function tick(game, dt, now = Date.now()) {
 // ---------------------------------------------------------------- player actions
 
 function needTrading(game, p) {
-  if (game.status !== 'running') fail('not_running', 'The game is not running.');
-  if (game.paused) fail('paused', 'The game is paused.');
-  if (game.phase !== 'trading') fail('closed', 'Trading is closed.');
-  if (p.ready) fail('locked', 'You are marked Ready. Tap "Edit my trades" to trade.');
+  if (game.status !== 'running') fail('not_running', 'O jogo não está a decorrer.');
+  if (game.phase !== 'trading') fail('closed', 'A negociação está fechada.');
+  if (p.ready) fail('locked', 'Estás marcado como Pronto. Toca em "Editar as minhas operações" para negociar.');
 }
 
 export function quote(game, p, { stockId, side, amount }) {
-  const s = STOCK_BY_ID[stockId] || fail('bad_stock', 'Unknown stock.');
+  const s = STOCK_BY_ID[stockId] || fail('bad_stock', 'Ação desconhecida.');
   const price = pricesNow(game)[stockId];
   const cents = Number(amount);
   if (side === 'buy') return { stock: s, ...quoteBuy(p, price, cents) };
   if (side === 'sell') return { stock: s, ...quoteSell(p, stockId, price, cents, game.round) };
-  return fail('bad_side', 'Side must be buy or sell.');
+  return fail('bad_side', 'Tem de ser compra ou venda.');
 }
 
 export function trade(game, p, { stockId, side, amount, requestId }) {
@@ -290,17 +289,16 @@ export function trade(game, p, { stockId, side, amount, requestId }) {
 }
 
 export function setReady(game, p, ready) {
-  if (game.status !== 'running' || game.phase !== 'trading') fail('closed', 'Trading is not open.');
-  if (game.paused) fail('paused', 'The game is paused.');
+  if (game.status !== 'running' || game.phase !== 'trading') fail('closed', 'A negociação não está aberta.');
   p.ready = !!ready;
   if (!p.ready) game.countdownMs = null;
 }
 
 export function purchasePowerup(game, p, type) {
-  if (!POWERUPS[type]) fail('bad_powerup', 'Unknown power-up.');
-  if (game.status !== 'running' || game.phase !== 'shop') fail('shop_closed', 'The Power-Up Shop is closed.');
-  if (p.powerup) fail('already_owned', 'You can only buy one power-up.');
-  if (p.cash < POWERUP_COST) fail('no_cash', 'Not enough cash for a power-up (€5,000).');
+  if (!POWERUPS[type]) fail('bad_powerup', 'Power-up desconhecido.');
+  if (game.status !== 'running' || game.phase !== 'shop') fail('shop_closed', 'A loja de power-ups está fechada.');
+  if (p.powerup) fail('already_owned', 'Só podes comprar um power-up.');
+  if (p.cash < POWERUP_COST) fail('no_cash', 'Dinheiro insuficiente para um power-up (€5.000).');
   p.cash -= POWERUP_COST;
   p.powerup = { type, status: 'owned', boughtRound: game.round, result: null };
   game.updatedAt = Date.now();
@@ -308,11 +306,11 @@ export function purchasePowerup(game, p, type) {
 
 export function activatePowerup(game, p, { stockId } = {}) {
   const pu = p.powerup;
-  if (!pu || pu.status !== 'owned') fail('no_powerup', 'You have no unused power-up.');
+  if (!pu || pu.status !== 'owned') fail('no_powerup', 'Não tens nenhum power-up por usar.');
   if (game.status !== 'running' || game.phase !== 'news' || game.round <= SHOP_AFTER_ROUND) {
-    fail('bad_time', 'Power-ups can only be activated during the news phase of Rounds 7-12.');
+    fail('bad_time', 'Os power-ups só podem ser ativados na fase de notícias das rondas 7 a 12.');
   }
-  if (POWERUPS[pu.type].needsStock && !STOCK_BY_ID[stockId]) fail('bad_stock', 'Choose a stock first.');
+  if (POWERUPS[pu.type].needsStock && !STOCK_BY_ID[stockId]) fail('bad_stock', 'Escolhe primeiro uma ação.');
   if (pu.type === 'oracle') {
     const dir = direction(roundReturn(game.market, game.round, stockId));
     pu.status = 'used';
@@ -352,7 +350,7 @@ function newsView(game, round) {
   return {
     round, title: ev.title, headline: ev.headline, summary: ev.summary, teaches: ev.teaches,
     relevant: ev.relevant,
-    scenario: { fictional: true, note: 'Game scenario: a fictional practice story. Stock reactions are simulated.' },
+    scenario: { fictional: true, note: 'Cenário do jogo: uma história fictícia de prática. As reações das ações são simuladas.' },
     real, // real-world article (headline, publisher, date, url) or null
   };
 }
@@ -363,10 +361,11 @@ function stocksView(game, p) {
   const prev = r > 0 ? game.market.path[r - 1] : cur;
   const rel = game.round >= 1 && game.round <= TOTAL_ROUNDS && game.phase !== 'finished' && !['reaction', 'shop'].includes(game.phase)
     ? new Set(EVENTS[game.round - 1].relevant) : new Set();
+  const preludeById = Object.fromEntries((game.market.prelude || []).map((m) => [m.id, m.pct]));
   return STOCKS.map((s) => {
     const q = p ? positionQty(p, s.id) : 0;
     return {
-      ...publicMeta(s), price: cur[s.id], change: r > 0 ? cur[s.id] / prev[s.id] - 1 : 0,
+      ...publicMeta(s), price: cur[s.id], change: r > 0 ? cur[s.id] / prev[s.id] - 1 : (preludeById[s.id] ?? 0),
       owned: q, ownedValue: valueCents(q, cur[s.id]), relevant: rel.has(s.id),
     };
   });
@@ -380,6 +379,7 @@ function base(game) {
     countdownMs: game.countdownMs, settled: game.settledThrough, nextCode: game.nextCode,
     shopAfter: SHOP_AFTER_ROUND, powerupCost: POWERUP_COST,
     fx: { date: game.fx.date, locked: true }, priceSource: 'demo-simulated',
+    opening: game.status === 'lobby' ? null : { title: OPENING.title, headline: OPENING.headline, rule: OPENING.rule, moves: (game.market.prelude || []).map(({ id, pct, direct, why }) => ({ id, pct, direct, why })) },
   };
 }
 
@@ -472,11 +472,11 @@ export function investorProfile(game, p) {
   const oldLots = Object.values(p.holdings).flatMap((h) => h.lots).filter((l) => game.round - l.round >= 4).length;
   const reducedSold = sells.some((t) => t.lots?.some((l) => l.rate === REDUCED_RATE));
   let name, why;
-  if (trades === 0 || histCash > 0.6) { name = 'Defensive Investor'; why = 'You kept most of your money safe in cash.'; }
-  else if (trades >= 24) { name = 'Aggressive Trader'; why = `You placed ${trades} orders: frequent buying and selling.`; }
-  else if (peak.size >= 8 && maxPos / (w || 1) < 0.3) { name = 'Diversified Investor'; why = `You spread money across ${peak.size} companies.`; }
-  else if (sells.length <= 4 && (oldLots > 0 || reducedSold)) { name = 'Long-Term Holder'; why = 'You held positions long enough to qualify for the lower tax rate.'; }
-  else { name = 'Opportunistic Trader'; why = 'You picked your moments and rotated positions as news came in.'; }
+  if (trades === 0 || histCash > 0.6) { name = 'Investidor Defensivo'; why = 'Guardaste a maior parte do dinheiro seguro em numerário.'; }
+  else if (trades >= 24) { name = 'Negociador Agressivo'; why = `Fizeste ${trades} ordens: compras e vendas frequentes.`; }
+  else if (peak.size >= 8 && maxPos / (w || 1) < 0.3) { name = 'Investidor Diversificado'; why = `Repartiste o dinheiro por ${peak.size} empresas.`; }
+  else if (sells.length <= 4 && (oldLots > 0 || reducedSold)) { name = 'Investidor de Longo Prazo'; why = 'Mantiveste posições o tempo suficiente para teres a taxa de imposto mais baixa.'; }
+  else { name = 'Negociador Oportunista'; why = 'Escolheste os teus momentos e rodaste posições conforme as notícias chegavam.'; }
   return { name, why, trades, stocksTraded: peak.size };
 }
 
@@ -505,7 +505,20 @@ export function results(game) {
   // Starting budgets differ by design, so also celebrate the best % return (does not change the winner rule).
   const br = [...players].sort((a, b) => b.ret - a.ret)[0] || null;
   const awards = { bestReturn: br && { id: br.id, name: br.name, ret: br.ret } };
-  return { champion: players[0] || null, awards, players, events, tiebreak: 'Highest wealth, then lower taxes paid, then higher % return.', totalRounds: TOTAL_ROUNDS, seed: game.market.seed };
+  return { champion: players[0] || null, awards, players, events, tiebreak: 'Maior riqueza, depois menos impostos pagos, depois maior % de retorno.', totalRounds: TOTAL_ROUNDS, seed: game.market.seed };
 }
 
 export { taxRate };
+
+/** Host reset: same room, same players, back to the lobby with a fresh market. Budgets stay editable. */
+export function resetGame(game) {
+  if (game.status === 'lobby') fail('already_lobby', 'O jogo ainda não começou.');
+  Object.assign(game, {
+    status: 'lobby', phase: 'lobby', round: 0, remainingMs: 0, totalMs: 0, paused: false, speed: 1,
+    settledThrough: 0, countdownMs: null, settlements: {}, history: {}, nextCode: null, finishedAt: null,
+    startedAt: null, market: buildMarket(crypto.randomInt(1, 2 ** 31)), updatedAt: Date.now(),
+  });
+  for (const p of game.players) {
+    Object.assign(p, { startCash: null, cash: 0, holdings: {}, trades: [], taxPaid: 0, ready: false, powerup: null, requestIds: [] });
+  }
+}

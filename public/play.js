@@ -61,8 +61,8 @@ function render() {
 
 function renderTop() {
   if (!S || S.status !== 'running') { $top.innerHTML = ''; return; }
-  const open = S.phase === 'trading' && !S.paused;
-  const status = S.paused ? ['paused', 'Paused'] : open ? ['open', 'Trading Open'] : ['closed', 'Trading Closed'];
+  const open = S.phase === 'trading';
+  const status = open ? ['open', S.paused ? 'Trading Open (clock paused)' : 'Trading Open'] : S.paused ? ['paused', 'Paused'] : ['closed', 'Trading Closed'];
   $top.innerHTML = `<div class="top"><div class="top-in">
     <div class="row"><span class="brand">ELVA<b>STOCKS</b></span><span class="muted" style="font-weight:700">${esc(S.round)}/${S.totalRounds} · ${esc(PHASE_LABEL[S.phase])}</span><span class="clock num" id="clock"></span></div>
     <div class="row" style="margin-top:6px"><span class="chip ${status[0]}">${status[1]}</span><span class="grow"></span><button class="btn ghost sm" data-act="sound" aria-label="Toggle sound">${fx.on ? '🔊' : '🔇'}</button></div>
@@ -90,6 +90,15 @@ function lobbyView() {
 }
 
 // ---------- Screen 1: stock market
+function openingCard() {
+  const o = S.opening;
+  if (!o || S.round !== 1 || !['news', 'trading'].includes(S.phase)) return '';
+  const byId = Object.fromEntries(S.stocks.map((x) => [x.id, x]));
+  const moves = o.moves.slice().sort((a, b) => b.pct - a.pct);
+  const row = (m) => `<div class="move">${logo(byId[m.id], 30)}<div class="grow"><b>${esc(byId[m.id].name)}</b> <span class="num ${cls(m.pct)}">${pct(m.pct)}</span>${m.why ? `<div class="muted" style="font-size:12px">${esc(m.why)}</div>` : ''}</div></div>`;
+  return `<div class="card pop" style="border-left:4px solid var(--gold)"><span class="tag fict">CENÁRIO INICIAL · FICTÍCIO</span><h3>${esc(o.headline)}</h3><p class="muted" style="font-size:13px">${esc(o.rule)}</p>
+    <details ${S.phase === 'news' ? 'open' : ''}><summary>Como as ações reagiram antes do jogo</summary>${moves.map(row).join('')}</details></div>`;
+}
 function newsCard() {
   const n = S.news; if (!n) return '';
   const full = S.phase === 'news';
@@ -108,7 +117,7 @@ function reactionCard() {
   const lines = moves.filter((m) => m.why).slice(0, 8);
   const mine = S.me.powerup?.result && S.me.powerup.result.round === r.round ? S.me.powerup.result : null;
   return `<div class="card pop"><span class="tag">MARKET REACTION · SIMULATED</span><h3 style="margin:6px 0">${esc(r.title)}</h3>
-    <p class="muted" style="font-size:13px">${esc(r.teaches)}${r.reversed ? ' This time the market looked past the headline: the news was already priced in.' : ''}</p>
+    <p class="muted" style="font-size:13px">${esc(r.teaches)}${r.reversed ? ' Desta vez o mercado ignorou a manchete: a notícia já estava refletida no preço.' : ''}</p>
     ${S.myPayout ? `<div class="cd" style="margin-bottom:8px">${esc(POWERUP_INFO[S.me.powerup.type].icon)} Your ${esc(POWERUP_INFO[S.me.powerup.type].name)} paid ${eur(S.myPayout)}</div>` : mine ? `<div class="cd" style="margin-bottom:8px">Your power-up paid €0 this round</div>` : ''}
     ${lines.map((m) => `<div class="move">${logo(byId[m.id], 34)}<div class="grow"><b>${esc(byId[m.id].name)}</b> <span class="num ${cls(m.pct)}">${pct(m.pct)}</span><div class="muted" style="font-size:13px">${esc(m.why)}</div></div></div>`).join('')}
   </div>
@@ -142,11 +151,11 @@ function stocksView() {
   if (ui.filter === 'news') list = list.filter((s) => s.relevant);
   if (ui.filter === 'mine') list = list.filter((s) => s.owned > 0);
   list.sort((a, b) => (b.relevant - a.relevant) || 0); // news-affected first, otherwise keep list order
-  const canTrade = S.phase === 'trading' && !S.paused;
+  const canTrade = S.phase === 'trading';
   const dock = S.phase === 'trading'
     ? `<div class="dock">${S.me.ready ? `<button class="btn ghost" data-act="unready">✓ Ready · Edit my trades</button>` : `<button class="btn green" data-act="ready">I'm Ready</button>`}${S.countdownMs != null ? `<div class="cd" style="margin-top:8px">Everyone is ready: closing trading in ${Math.ceil(S.countdownMs / 1000)}s</div>` : ''}</div>` : '';
   return `<div class="stack">
-    ${newsCard()}${powerupCard()}${reactionCard()}
+    ${openingCard()}${newsCard()}${powerupCard()}${reactionCard()}
     ${S.phase === 'trading' && !S.me.ready ? '' : ''}
     <input id="search" type="search" placeholder="Search companies or tickers" value="${esc(ui.q)}" aria-label="Search stocks">
     <div class="chips">${[['all', 'All Stocks'], ['news', 'News-Affected'], ['mine', 'My Holdings']].map(([k, l]) => `<button class="fchip ${ui.filter === k ? 'on' : ''}" data-act="filter" data-v="${k}">${l}</button>`).join('')}</div>
@@ -160,7 +169,7 @@ function stocksView() {
 // ---------- Screen 2: trading
 function tradeView() {
   const s = S.stocks.find((x) => x.id === ui.sel);
-  const open = S.phase === 'trading' && !S.paused && !S.me.ready;
+  const open = S.phase === 'trading' && !S.me.ready;
   const buy = ui.side === 'buy';
   const amtC = Math.round(parseFloat(ui.amount || '0') * 100) || 0;
   const quickBuy = [500, 1000, 5000, 10000].map((e) => `<button data-act="quick" data-v="${e}">€${e.toLocaleString('en-IE')}</button>`).join('') + `<button data-act="quickmax">Max</button>`;

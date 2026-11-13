@@ -27,9 +27,9 @@ function checkAmount(amount) {
 export function quoteBuy(player, price, amount) {
   const err = checkAmount(amount);
   if (err) return { ok: false, error: err };
-  if (amount > player.cash) return { ok: false, error: 'Not enough cash. Borrowing is not allowed.' };
+  if (amount > player.cash) return { ok: false, error: 'Dinheiro insuficiente. Não é permitido pedir emprestado.' };
   const qty = Math.floor((amount * MICRO) / price);
-  if (qty <= 0) return { ok: false, error: 'Amount too small to buy any shares.' };
+  if (qty <= 0) return { ok: false, error: 'Montante demasiado pequeno para comprar ações.' };
   return { ok: true, side: 'buy', qty, cost: amount, price };
 }
 
@@ -39,9 +39,9 @@ export function quoteSell(player, id, price, gross, round) {
   if (err) return { ok: false, error: err };
   const lots = player.holdings[id]?.lots || [];
   const total = lots.reduce((a, l) => a + l.qty, 0);
-  if (total <= 0) return { ok: false, error: 'You do not own this stock.' };
+  if (total <= 0) return { ok: false, error: 'Não tens esta ação.' };
   const posValue = valueCents(total, price);
-  if (gross > posValue + 1) return { ok: false, error: 'You cannot sell more than you own.' };
+  if (gross > posValue + 1) return { ok: false, error: 'Não podes vender mais do que tens.' };
   let remaining = gross >= posValue ? total : Math.min(total, Math.ceil((gross * MICRO) / price));
   const taken = [];
   let proceeds = 0, cost = 0, tax = 0, gain = 0;

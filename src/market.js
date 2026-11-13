@@ -1,5 +1,5 @@
 import { STOCKS } from './stocks.js';
-import { EVENTS } from './events.js';
+import { EVENTS, OPENING } from './events.js';
 
 export function mulberry32(a) {
   return function () {
@@ -17,12 +17,12 @@ function gauss(rng) {
 }
 
 // Max |move| (percent) for directly affected HIGH-volatility stocks, per round.
-export const CEILING = [6, 8, 8, 9, 10, 10, 10, 10, 12, 12, 12, 15];
+export const CEILING = [10, 13, 13, 15, 16, 16, 16, 16, 19, 19, 19, 24];
 // ord = ordinary-round cap, news = share of the ceiling, others = noise scales (percent)
 export const TIER = {
-  low: { ord: 1.5, news: 0.4, noise: 0.6, sector: 0.6, beta: 0.5 },
-  medium: { ord: 2.5, news: 0.7, noise: 1.0, sector: 1.0, beta: 1.0 },
-  high: { ord: 4, news: 1.0, noise: 1.6, sector: 1.4, beta: 1.4 },
+  low: { ord: 2.5, news: 0.4, noise: 1.0, sector: 1.0, beta: 0.6 },
+  medium: { ord: 4.5, news: 0.7, noise: 1.8, sector: 1.7, beta: 1.1 },
+  high: { ord: 7, news: 1.0, noise: 2.8, sector: 2.4, beta: 1.6 },
 };
 const REVERSAL_PROB = 0.15;
 
@@ -35,14 +35,28 @@ const clamp = (x, lim) => Math.max(-lim, Math.min(lim, x));
  */
 export function buildMarket(seed) {
   const rng = mulberry32(seed >>> 0);
-  const path = [Object.fromEntries(STOCKS.map((s) => [s.id, s.startPriceCents]))];
-  const rounds = [];
   const sectors = [...new Set(STOCKS.map((s) => s.sector))];
+
+  // Opening scenario (public history): how the stocks behaved BEFORE round 1, so the game starts with volatility.
+  const base = Object.fromEntries(STOCKS.map((s) => [s.id, s.startPriceCents]));
+  const openSector = Object.fromEntries(sectors.map((s) => [s, gauss(rng) * 1.5]));
+  const openStart = {};
+  const prelude = [];
+  for (const s of STOCKS) {
+    const t = TIER[s.vol];
+    const sens = OPENING.sens[s.id] || 0;
+    const raw = openSector[s.sector] * t.sector + gauss(rng) * t.noise + sens * OPENING.ceiling * t.news * (0.7 + 0.3 * rng());
+    const pct = clamp(raw, Math.max(t.ord, OPENING.ceiling * t.news));
+    openStart[s.id] = Math.max(1, Math.round(base[s.id] * (1 + pct / 100)));
+    prelude.push({ id: s.id, from: base[s.id], price: openStart[s.id], pct: openStart[s.id] / base[s.id] - 1, direct: sens !== 0, why: sens !== 0 ? OPENING.roles[s.id] || '' : '' });
+  }
+  const path = [openStart];
+  const rounds = [];
 
   for (let r = 1; r <= 12; r++) {
     const ev = EVENTS[r - 1];
-    const marketPct = ev.bias + gauss(rng) * 0.5;
-    const sectorPct = Object.fromEntries(sectors.map((s) => [s, gauss(rng) * 0.7]));
+    const marketPct = ev.bias + gauss(rng) * 1.0;
+    const sectorPct = Object.fromEntries(sectors.map((s) => [s, gauss(rng) * 1.2]));
     const reversed = rng() < REVERSAL_PROB;
     const intensity = 0.55 + 0.45 * rng();
     const prev = path[r - 1];
@@ -61,7 +75,7 @@ export function buildMarket(seed) {
     path.push(next);
     rounds.push({ round: r, reversed, intensity, marketPct, detail });
   }
-  return { seed, path, rounds };
+  return { seed, path, rounds, prelude };
 }
 
 export const roundReturn = (market, r, id) => market.path[r][id] / market.path[r - 1][id] - 1;

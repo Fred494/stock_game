@@ -52,6 +52,7 @@ function createView() {
 }
 
 const headBar = () => `<div class="hbar"><span class="brand" style="font-size:18px">ELVA<b>STOCKS</b></span><span class="chip">Room ${esc(host.code)}</span><span class="grow"></span>
+  ${S && S.status !== 'lobby' ? '<button class="btn ghost sm" data-act="restart">↺ Reiniciar jogo</button>' : ''}<button class="btn ghost sm" data-act="newroom">＋ Nova sala</button>
   <button class="btn ghost sm" data-act="pres">${pres ? 'Exit presentation' : '📺 Presentation mode'}</button></div>`;
 
 function lobbyView() {
@@ -126,6 +127,12 @@ app.addEventListener('click', async (e) => {
   else if (a === 'next') await hostCall({ action: 'nextPhase' });
   else if (a === 'nextround') await hostCall({ action: 'nextRound' });
   else if (a === 'speed') await hostCall({ action: 'speed', speed: Number(el.dataset.v) });
+  else if (a === 'restart') { if (window.confirm('Reiniciar o jogo? Todo o progresso é apagado, os jogadores ficam na sala e voltam ao lobby com novo mercado.')) await hostCall({ action: 'resetGame' }, 'Jogo reiniciado'); }
+  else if (a === 'newroom') {
+    if (!window.confirm('Criar uma nova sala? Os jogadores atuais têm de entrar com o novo código.')) return;
+    const r = await hostCall({ action: 'newRoom' });
+    if (r?.nextCode) { host = { code: r.nextCode, token: host.token }; localStorage.setItem(KEY, JSON.stringify(host)); S = null; sig = ''; await poll(); render(); }
+  }
   else if (a === 'again') {
     const r = await hostCall({ action: 'playAgain' });
     if (r?.nextCode) { host = { code: r.nextCode, token: host.token }; localStorage.setItem(KEY, JSON.stringify(host)); S = null; sig = ''; await poll(); render(); }

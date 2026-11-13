@@ -22,8 +22,8 @@ const toTrading = (game) => { G.startGame(game); G.advance(game); };
 
 test('names unique, validated, no impersonation', () => {
   const { game } = lobby(1);
-  assert.throws(() => G.addPlayer(game, { name: 'p0' }), /taken/);
-  assert.throws(() => G.addPlayer(game, { name: '   ' }), /name/);
+  assert.throws(() => G.addPlayer(game, { name: 'p0' }), /já está a ser usado/);
+  assert.throws(() => G.addPlayer(game, { name: '   ' }), /Escreve um nome/);
   const a = G.addPlayer(game, { name: 'Zed' });
   const again = G.addPlayer(game, { name: 'whatever', token: a.token });
   assert.equal(again.reconnected, true);
@@ -33,23 +33,23 @@ test('names unique, validated, no impersonation', () => {
 
 test('room holds max 6 players', () => {
   const { game } = lobby(6);
-  assert.throws(() => G.addPlayer(game, { name: 'Seventh' }), /full/);
+  assert.throws(() => G.addPlayer(game, { name: 'Seventh' }), /cheia/);
 });
 
 test('host-assigned budgets validated and locked', () => {
   const { game, ps } = lobby(2);
-  assert.throws(() => G.setBudget(game, ps[0].p.id, -5), /non-negative/);
-  assert.throws(() => G.setBudget(game, ps[0].p.id, NaN), /non-negative/);
-  assert.throws(() => G.setBudget(game, ps[0].p.id, Infinity), /non-negative/);
+  assert.throws(() => G.setBudget(game, ps[0].p.id, -5), /número positivo/);
+  assert.throws(() => G.setBudget(game, ps[0].p.id, NaN), /número positivo/);
+  assert.throws(() => G.setBudget(game, ps[0].p.id, Infinity), /número positivo/);
   const { game: g2 } = G.createGame({ code: 'X', seed: 1 });
   G.addPlayer(g2, { name: 'A' });
-  assert.throws(() => G.startGame(g2), /starting budget/);
+  assert.throws(() => G.startGame(g2), /orçamento inicial/);
   G.setBudget(game, ps[0].p.id, 125000);
   G.setBudget(game, ps[1].p.id, 90000);
   G.startGame(game);
   assert.equal(ps[0].p.cash, 12_500_000);
   assert.equal(ps[1].p.cash, 9_000_000);
-  assert.throws(() => G.setBudget(game, ps[0].p.id, 1), /locked/);
+  assert.throws(() => G.setBudget(game, ps[0].p.id, 1), /bloqueados/);
 });
 
 test('buy: fractional shares, no overspend', () => {
@@ -140,7 +140,7 @@ test('trading only in trading phase; frozen prices; idempotent orders', () => {
   const { game, ps } = lobby(1);
   const [{ p }] = ps;
   G.startGame(game);
-  assert.throws(() => G.trade(game, p, { stockId: 'KO', side: 'buy', amount: 10_000 }), /closed/);
+  assert.throws(() => G.trade(game, p, { stockId: 'KO', side: 'buy', amount: 10_000 }), /fechada/);
   G.advance(game);
   const before = G.pricesNow(game)['KO'];
   const r1 = G.trade(game, p, { stockId: 'KO', side: 'buy', amount: 100_000, requestId: 'a' });
@@ -149,18 +149,18 @@ test('trading only in trading phase; frozen prices; idempotent orders', () => {
   assert.equal(r2.duplicate, true);
   assert.equal(p.cash, 10_000_000 - 100_000);
   assert.equal(G.pricesNow(game)['KO'], before);
-  assert.throws(() => G.trade(game, p, { stockId: 'KO', side: 'buy', amount: 99_999_999 }), /Not enough cash/);
+  assert.throws(() => G.trade(game, p, { stockId: 'KO', side: 'buy', amount: 99_999_999 }), /Dinheiro insuficiente/);
   G.advance(game, { confirm: true });
-  assert.throws(() => G.trade(game, p, { stockId: 'KO', side: 'buy', amount: 10_000 }), /closed/);
+  assert.throws(() => G.trade(game, p, { stockId: 'KO', side: 'buy', amount: 10_000 }), /fechada/);
   assert.equal(game.phase, 'reaction');
   assert.notEqual(G.pricesNow(game)['KO'], undefined);
 });
 
-test('paused game blocks trades and the clock', () => {
+test('paused game freezes the clock but still allows trades', () => {
   const { game, ps } = lobby(1);
   toTrading(game);
   G.setPaused(game, true);
-  assert.throws(() => G.trade(game, ps[0].p, { stockId: 'KO', side: 'buy', amount: 10_000 }), /paused/);
+  assert.ok(G.trade(game, ps[0].p, { stockId: 'KO', side: 'buy', amount: 10_000 }).trade);
   const r = game.remainingMs;
   G.tick(game, 5000);
   assert.equal(game.remainingMs, r);
@@ -176,14 +176,14 @@ test('timer speed scales countdown, not returns', () => {
   const r = game.remainingMs;
   G.tick(game, 1000);
   assert.equal(game.remainingMs, r - 4000);
-  assert.throws(() => G.setSpeed(game, 3), /Speed/);
+  assert.throws(() => G.setSpeed(game, 3), /velocidade/);
 });
 
 test('unanimous ready -> 5s countdown -> reaction; cancel on unready; skip warns', () => {
   const { game, ps } = lobby(2);
   toTrading(game);
   ps.forEach(({ p }) => { p.lastSeen = Date.now(); });
-  assert.throws(() => G.advance(game), /not finished/);
+  assert.throws(() => G.advance(game), /não terminaram/);
   G.setReady(game, ps[0].p, true);
   G.tick(game, 1000);
   assert.equal(game.countdownMs, null);
@@ -204,7 +204,7 @@ test('ready locks trading until edit; disconnected players do not block', () => 
   ps[0].p.lastSeen = Date.now();
   ps[1].p.lastSeen = 0; // disconnected
   G.setReady(game, ps[0].p, true);
-  assert.throws(() => G.trade(game, ps[0].p, { stockId: 'KO', side: 'buy', amount: 10_000 }), /Ready/);
+  assert.throws(() => G.trade(game, ps[0].p, { stockId: 'KO', side: 'buy', amount: 10_000 }), /Pronto/);
   G.tick(game, 5100);
   assert.equal(game.phase, 'reaction');
 });
@@ -226,13 +226,13 @@ function playTo(game, round, phase) {
 test('power-up shop: one per player, €5,000, no overdraft, only after round 6', () => {
   const { game, ps } = lobby(2, 1000); // €1,000 budgets
   G.startGame(game);
-  assert.throws(() => G.purchasePowerup(game, ps[0].p, 'oracle'), /closed/);
+  assert.throws(() => G.purchasePowerup(game, ps[0].p, 'oracle'), /fechada/);
   playTo(game, 6, 'shop');
-  assert.throws(() => G.purchasePowerup(game, ps[0].p, 'oracle'), /Not enough cash/);
+  assert.throws(() => G.purchasePowerup(game, ps[0].p, 'oracle'), /Dinheiro insuficiente/);
   ps[0].p.cash = 2_000_000;
   G.purchasePowerup(game, ps[0].p, 'oracle');
   assert.equal(ps[0].p.cash, 1_500_000);
-  assert.throws(() => G.purchasePowerup(game, ps[0].p, 'shield'), /only buy one/);
+  assert.throws(() => G.purchasePowerup(game, ps[0].p, 'shield'), /Só podes comprar um/);
 });
 
 test('oracle: private direction, consumed, not before round 7', () => {
@@ -241,7 +241,7 @@ test('oracle: private direction, consumed, not before round 7', () => {
   G.startGame(game);
   playTo(game, 6, 'shop');
   G.purchasePowerup(game, p, 'oracle');
-  assert.throws(() => G.activatePowerup(game, p, { stockId: 'AZN' }), /Rounds 7-12/);
+  assert.throws(() => G.activatePowerup(game, p, { stockId: 'AZN' }), /rondas 7 a 12/);
   playTo(game, 7, 'news');
   G.activatePowerup(game, p, { stockId: 'AZN' });
   assert.equal(p.powerup.status, 'used');
@@ -250,7 +250,7 @@ test('oracle: private direction, consumed, not before round 7', () => {
   const theirs = JSON.stringify(G.playerView(game, other));
   assert.ok(mine.includes('direction'));
   assert.ok(!theirs.includes('direction'));
-  assert.throws(() => G.activatePowerup(game, p, { stockId: 'AZN' }), /no unused/);
+  assert.throws(() => G.activatePowerup(game, p, { stockId: 'AZN' }), /Não tens nenhum power-up/);
 });
 
 test('crash shield pays loss up to €10,000, never on gains, consumed once', () => {
@@ -350,4 +350,20 @@ test('tie-breaker: lower tax first', () => {
   ps[0].p.taxPaid = 100;
   const r2 = G.ranking(game);
   assert.equal(r2[0].rank, 1); assert.equal(r2[1].rank, 1); // shared position
+});
+
+test('resetGame returns to the lobby with the same players and a clean slate', () => {
+  const { game, ps } = lobby(2);
+  toTrading(game);
+  G.trade(game, ps[0].p, { stockId: 'KO', side: 'buy', amount: 10_000 });
+  const seed = game.market.seed;
+  G.resetGame(game);
+  assert.equal(game.status, 'lobby');
+  assert.equal(game.players.length, 2);
+  assert.equal(game.players[0].trades.length, 0);
+  assert.equal(game.round, 0);
+  assert.notEqual(game.market.seed, seed);
+  G.setBudget(game, game.players[0].id, 50_000);
+  G.startGame(game);
+  assert.equal(game.status, 'running');
 });

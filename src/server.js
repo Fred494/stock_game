@@ -60,7 +60,7 @@ async function api(req, res, url) {
   }
 
   if (req.method === 'POST' && parts[1] === 'games' && parts.length === 2) {
-    if (limited(ip, 20)) return send(res, 429, { error: 'Slow down', code: 'rate' });
+    if (limited(ip, 20)) return send(res, 429, { error: 'Mais devagar', code: 'rate' });
     const body = await readBody(req);
     const code = G.makeCode((c) => games.has(c));
     const { game, hostToken } = G.createGame({ code, timing: body.timing === 'quick' ? 'quick' : 'standard' });
@@ -71,11 +71,11 @@ async function api(req, res, url) {
 
   if (parts[1] === 'games' && parts[2]) {
     const game = games.get(String(parts[2]).toUpperCase());
-    if (!game) return send(res, 404, { error: 'Room not found', code: 'no_room' });
+    if (!game) return send(res, 404, { error: 'Sala não encontrada', code: 'no_room' });
     const sub = parts[3];
 
     if (req.method === 'POST' && sub === 'join') {
-      if (limited(ip, 40)) return send(res, 429, { error: 'Slow down', code: 'rate' });
+      if (limited(ip, 40)) return send(res, 429, { error: 'Mais devagar', code: 'rate' });
       const b = await readBody(req);
       const { player, token, reconnected } = G.addPlayer(game, { name: b.name, avatar: b.avatar, token: b.token });
       markDirty(game);
@@ -86,13 +86,13 @@ async function api(req, res, url) {
       if (G.isHost(game, tok)) return send(res, 200, G.hostView(game));
       const p = G.findPlayerByToken(game, tok);
       if (p) return send(res, 200, G.playerView(game, p));
-      return send(res, 401, { error: 'Unknown session', code: 'unauthorized' });
+      return send(res, 401, { error: 'Sessão desconhecida', code: 'unauthorized' });
     }
 
     if (req.method === 'GET' && sub === 'results' && game.status === 'finished') return send(res, 200, G.results(game));
 
     if (req.method === 'POST' && sub === 'host') {
-      if (!G.isHost(game, tok)) return send(res, 403, { error: 'Host only', code: 'forbidden' });
+      if (!G.isHost(game, tok)) return send(res, 403, { error: 'Só o anfitrião', code: 'forbidden' });
       const b = await readBody(req);
       let extra = {};
       switch (b.action) {
@@ -106,6 +106,15 @@ async function api(req, res, url) {
         case 'speed': G.setSpeed(game, b.speed); break;
         case 'nextPhase': G.advance(game, { confirm: !!b.confirm }); break;
         case 'nextRound': G.nextRound(game, { confirm: !!b.confirm }); break;
+        case 'resetGame': G.resetGame(game); break;
+        case 'newRoom': {
+          const code = G.makeCode((c) => games.has(c));
+          const next = G.createGame({ code, timing: game.timingName, hostToken: tok }).game;
+          games.set(code, next); markDirty(next);
+          prefetchNews(next, () => markDirty(next)).catch(() => {});
+          extra = { nextCode: code };
+          break;
+        }
         case 'playAgain': {
           if (game.status !== 'finished') throw new G.GameError('not_finished', 'Game is not finished.');
           if (!game.nextCode) {
@@ -117,7 +126,7 @@ async function api(req, res, url) {
           extra = { nextCode: game.nextCode };
           break;
         }
-        default: return send(res, 400, { error: 'Unknown action', code: 'bad_action' });
+        default: return send(res, 400, { error: 'Ação desconhecida', code: 'bad_action' });
       }
       markDirty(game);
       return send(res, 200, { ok: true, ...extra });
@@ -125,7 +134,7 @@ async function api(req, res, url) {
 
     if (req.method === 'POST' && sub === 'player') {
       const p = G.findPlayerByToken(game, tok);
-      if (!p) return send(res, 401, { error: 'Unknown session', code: 'unauthorized' });
+      if (!p) return send(res, 401, { error: 'Sessão desconhecida', code: 'unauthorized' });
       const b = await readBody(req);
       let out = {};
       switch (b.action) {
@@ -135,13 +144,13 @@ async function api(req, res, url) {
         case 'unready': G.setReady(game, p, false); break;
         case 'buyPowerup': G.purchasePowerup(game, p, b.type); break;
         case 'activatePowerup': G.activatePowerup(game, p, b); break;
-        default: return send(res, 400, { error: 'Unknown action', code: 'bad_action' });
+        default: return send(res, 400, { error: 'Ação desconhecida', code: 'bad_action' });
       }
       markDirty(game);
       return send(res, 200, { ok: true, ...out });
     }
   }
-  return send(res, 404, { error: 'Not found', code: 'not_found' });
+  return send(res, 404, { error: 'Não encontrado', code: 'not_found' });
 }
 
 // ------------------------------------------------------------ static
@@ -150,7 +159,7 @@ function serveStatic(req, res, url) {
   if (p === '/') p = '/index.html';
   const file = path.normalize(path.join(PUBLIC, p));
   if (!file.startsWith(PUBLIC + path.sep) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
-    return send(res, 404, 'Not found');
+    return send(res, 404, 'Não encontrado');
   }
   res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
   fs.createReadStream(file).pipe(res);
@@ -169,7 +178,7 @@ export const server = http.createServer(async (req, res) => {
   } catch (e) {
     if (e instanceof G.GameError) return send(res, e.code === 'confirm_required' ? 409 : 400, { error: e.message, code: e.code });
     console.error(e);
-    return send(res, 500, { error: 'Server error', code: 'server' });
+    return send(res, 500, { error: 'Erro do servidor', code: 'server' });
   }
 });
 
