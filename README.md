@@ -72,3 +72,11 @@ test/          engine + HTTP tests
 - No live quote or FX provider yet (demo prices); the provider seam is `src/stocks.js` + `src/news.js`.
 - Logos come from public favicon services at runtime (ticker badge fallback).
 - State is stored in local JSON files, suited to a single server instance.
+
+## Play online (Render)
+
+1. Sign in at https://render.com with GitHub, choose **New > Blueprint**, and pick this repo. `render.yaml` sets everything up (free plan).
+2. When it is live, open `https://<your-service>.onrender.com/host.html` to host; players use `/play.html` or the QR code. The server serves the whole site, so no other setup is needed.
+3. Optional: set the GitHub repo variable `APP_URL` to the Render URL so the GitHub Pages site's buttons also work.
+
+Free plan notes: the service sleeps after ~15 minutes idle (first load takes ~30 s) and its disk is not persistent, so games are lost on restart. Start it a minute before your game.

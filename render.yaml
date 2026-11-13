@@ -1,0 +1,17 @@
+# One-click server hosting on Render (free plan). The server also serves the whole site,
+# so the Render URL is a complete, playable website on its own.
+services:
+  - type: web
+    name: elvastocks
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 22
+      - key: NEWS_PROVIDER
+        value: demo
+      - key: CORS_ORIGIN
+        value: https://fred494.github.io
