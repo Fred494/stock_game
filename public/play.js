@@ -7,6 +7,11 @@ const save = (s) => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catc
 const clear = () => { try { localStorage.removeItem(KEY); } catch { /* ignore */ } };
 
 let session = load();
+// A QR link / ?code= for a DIFFERENT room means "join the new room": forget the old saved session.
+{
+  const want = (new URLSearchParams(location.search).get('code') || '').trim().toUpperCase();
+  if (session && want && want !== String(session.code).toUpperCase()) { clear(); session = null; }
+}
 let S = null; // latest server state
 let sig = '';
 let clockAt = 0; // performance.now() when phase ends
