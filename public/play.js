@@ -47,8 +47,8 @@ setInterval(poll, 1000);
 setInterval(() => {
   if (!S) return;
   const left = S.paused ? S.remainingMs : Math.max(0, clockAt - performance.now());
-  const c = $('#clock'); if (c) c.textContent = S.phase === 'finished' || S.phase === 'lobby' ? '' : fmtClock(left);
-  const b = $('#bar'); if (b) b.style.width = `${S.totalMs ? 100 * (1 - left / clockTotal) : 0}%`;
+  const c = $('#clock'); if (c) c.textContent = !S.timed || S.phase === 'finished' || S.phase === 'lobby' ? '' : fmtClock(left);
+  const b = $('#bar'); if (b) b.style.width = `${S.timed && S.totalMs ? 100 * (1 - left / clockTotal) : 0}%`;
 }, 250);
 
 // ------------------------------------------------------------ render
@@ -61,6 +61,7 @@ function render() {
   if (!session || !S) $main.innerHTML = joinView();
   else if (S.status === 'lobby') $main.innerHTML = lobbyView();
   else if (S.status === 'finished') $main.innerHTML = finalView();
+  else if (S.intro) $main.innerHTML = introView();
   else $main.innerHTML = ui.screen === 'trade' && ui.sel ? tradeView() : stocksView();
   renderOverlay();
   if (hadSearch) { const el = $('#search'); if (el) { el.focus(); el.setSelectionRange(caret, caret); } }
@@ -70,7 +71,7 @@ function render() {
 function renderTop() {
   if (!S || S.status !== 'running') { $top.innerHTML = ''; return; }
   const open = S.phase === 'trading';
-  const status = open ? ['open', S.paused ? 'Negociação aberta (relógio parado)' : 'Negociação aberta'] : S.paused ? ['paused', 'Em pausa'] : ['closed', 'Negociação fechada'];
+  const status = open ? ['open', S.paused ? 'Negociação aberta (relógio parado)' : 'Negociação aberta'] : S.paused ? ['paused', 'Em pausa'] : S.phase === 'news' ? ['closed', 'Lê a notícia · negociação ainda fechada'] : S.phase === 'reaction' ? ['closed', 'Reação do mercado'] : S.phase === 'shop' ? ['closed', 'Loja de power-ups'] : ['closed', 'Negociação fechada'];
   $top.innerHTML = `<div class="top"><div class="top-in">
     <div class="row"><span class="brand">ELVA<b>STOCKS</b></span><span class="muted" style="font-weight:700">${esc(S.round)}/${S.totalRounds} · ${esc(PHASE_LABEL[S.phase])}</span><span class="clock num" id="clock"></span></div>
     <div class="row" style="margin-top:6px"><span class="chip ${status[0]}">${status[1]}</span><span class="grow"></span><button class="btn ghost sm" data-act="sound" aria-label="Ligar ou desligar o som">${fx.on ? '🔊' : '🔇'}</button></div>
@@ -91,10 +92,21 @@ function joinView() {
   <p class="muted" style="text-align:center">Queres ser anfitrião? <a href="host.html">Criar um jogo</a></p>`;
 }
 
+function introView() {
+  return `<div class="stack"><div class="hero"><h1>ELVA<b>STOCKS</b></h1><p class="muted">Resumo rápido do jogo</p></div>
+  <div class="card"><ul style="line-height:1.7;margin:0;padding-left:20px">
+    <li><b>Objetivo:</b> acabar com mais dinheiro (riqueza) depois de 12 rondas.</li>
+    <li><b>Cada ronda tem 3 fases:</b> ① ver a notícia, ② comprar e vender ações, ③ ver como o mercado reagiu.</li>
+    <li><b>Imposto:</b> 28% sobre os lucros ao vender (20% se mantiveres a ação 4 ou mais rondas). Perdas não pagam imposto.</li>
+    <li><b>Depois da ronda 6:</b> loja de power-ups (um por jogador).</li>
+    <li><b>Sem tempo:</b> o anfitrião inicia cada fase.</li></ul></div>
+  <p class="muted" style="text-align:center">À espera que o anfitrião comece a ronda 1…</p></div>`;
+}
+
 function lobbyView() {
   return `<div class="hero"><h1>Estás dentro!</h1><p class="muted">Sala <b>${esc(S.code)}</b> · à espera que o anfitrião defina os orçamentos e comece o jogo.</p></div>
   <div class="card"><h3>Jogadores (${S.players.length}/6)</h3>${S.players.map((p) => `<div class="lb"><span class="avatar" style="background:${esc(p.avatar)}">${esc(p.name[0].toUpperCase())}</span><b>${esc(p.name)}</b>${p.id === S.me.id ? '<span class="chip">Tu</span>' : ''}</div>`).join('')}</div>
-  <div class="card" style="margin-top:12px"><h3>Como funciona</h3><p class="muted">Em cada ronda: lê a notícia (60 s), negoceia (60 s) e vê o mercado reagir. Os preços ficam parados enquanto negoceias. Os lucros pagam imposto quando vendes: 28%, ou 20% se mantiveres 4 ou mais rondas. Ganha quem tiver mais riqueza depois da ronda 12.</p></div>`;
+  <div class="card" style="margin-top:12px"><h3>Como funciona</h3><p class="muted">Em cada ronda: lê a notícia, negoceia e vê o mercado reagir. O anfitrião inicia cada fase. Os preços ficam parados enquanto negoceias. Os lucros pagam imposto quando vendes: 28%, ou 20% se mantiveres 4 ou mais rondas. Ganha quem tiver mais riqueza depois da ronda 12.</p></div>`;
 }
 
 // ---------- Screen 1: stock market

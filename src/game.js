@@ -36,11 +36,13 @@ export function makeCode(existing = () => false) {
   }
 }
 
-export function createGame({ code, timing = 'standard', seed, durations, hostToken } = {}) {
+export function createGame({ code, timing = 'standard', seed, durations, hostToken, timed } = {}) {
   const ht = hostToken || token();
   const sd = seed ?? crypto.randomInt(1, 2 ** 31);
   const game = {
     v: 1, code, createdAt: Date.now(), status: 'lobby', timingName: timing,
+    // Untimed by default: the host starts every phase. Timed only for the quick demo / tests / simulations.
+    timed: timed ?? (durations != null || timing === 'quick'), introDone: false,
     durations: durations || TIMING[timing] || TIMING.standard,
     hostHash: sha(ht), players: [],
     round: 0, phase: 'lobby', remainingMs: 0, totalMs: 0, paused: false, speed: 1,
@@ -238,6 +240,8 @@ export function finishGame(game) {
   for (const p of game.players) if (p.powerup && p.powerup.status !== 'used') p.powerup.expired = true;
 }
 
+/** The host closes the quick intro summary shown at the start of the game. */
+export function endIntro(game) { if (game.status === 'running') game.introDone = true; }
 export function setPaused(game, paused) { if (game.status === 'running') game.paused = !!paused; }
 export function setSpeed(game, s) {
   if (![1, 2, 4].includes(Number(s))) fail('bad_speed', 'A velocidade tem de ser 1, 2 ou 4.');
@@ -246,7 +250,7 @@ export function setSpeed(game, s) {
 
 /** Server-authoritative clock. dt is real milliseconds. */
 export function tick(game, dt, now = Date.now()) {
-  if (game.status !== 'running' || game.paused) return false;
+  if (game.status !== 'running' || game.paused || !game.timed) return false;
   const before = `${game.phase}${game.round}`;
   if (game.phase === 'trading') {
     const live = game.players.filter((p) => connected(p, now));
@@ -390,7 +394,8 @@ function base(game) {
   return {
     code: game.code, serverNow: Date.now(), status: game.status, phase: game.phase, round: game.round,
     totalRounds: TOTAL_ROUNDS, paused: game.paused, speed: game.speed,
-    remainingMs: Math.max(0, Math.round(game.remainingMs / game.speed)), totalMs: Math.round(game.totalMs / game.speed),
+    timed: !!game.timed, intro: game.status === 'running' && !game.introDone && game.round === 1 && game.phase === 'news',
+    remainingMs: game.timed ? Math.max(0, Math.round(game.remainingMs / game.speed)) : 0, totalMs: game.timed ? Math.round(game.totalMs / game.speed) : 0,
     countdownMs: game.countdownMs, settled: game.settledThrough, nextCode: game.nextCode,
     shopAfter: SHOP_AFTER_ROUND, powerupCost: POWERUP_COST,
     fx: { date: game.fx.date, locked: true }, priceSource: 'demo-simulated',
@@ -532,7 +537,7 @@ export function resetGame(game) {
   Object.assign(game, {
     status: 'lobby', phase: 'lobby', round: 0, remainingMs: 0, totalMs: 0, paused: false, speed: 1,
     settledThrough: 0, countdownMs: null, settlements: {}, history: {}, nextCode: null, finishedAt: null,
-    startedAt: null, market: buildMarket(crypto.randomInt(1, 2 ** 31)), updatedAt: Date.now(),
+    startedAt: null, introDone: false, market: buildMarket(crypto.randomInt(1, 2 ** 31)), updatedAt: Date.now(),
   });
   for (const p of game.players) {
     Object.assign(p, { startCash: null, cash: 0, holdings: {}, trades: [], taxPaid: 0, ready: false, powerup: null, requestIds: [] });

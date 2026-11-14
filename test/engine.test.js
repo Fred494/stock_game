@@ -368,3 +368,25 @@ test('resetGame returns to the lobby with the same players and a clean slate', (
   G.startGame(game);
   assert.equal(game.status, 'running');
 });
+
+test('untimed game: nothing advances by itself, host starts each phase, quick intro first', () => {
+  const { game } = G.createGame({ code: 'UNT', seed: 3 });
+  const { player } = G.addPlayer(game, { name: 'A' });
+  G.setBudget(game, player.id, 100_000);
+  G.startGame(game);
+  assert.equal(G.hostView(game).timed, false);
+  assert.equal(G.hostView(game).intro, true);
+  G.tick(game, 60 * 60 * 1000);
+  assert.equal(game.phase, 'news');
+  G.endIntro(game);
+  assert.equal(G.hostView(game).intro, false);
+  G.advance(game);
+  assert.equal(game.phase, 'trading');
+  player.ready = true;
+  G.tick(game, 10 * 60 * 1000);
+  assert.equal(game.phase, 'trading');
+  assert.equal(game.countdownMs, null);
+  G.advance(game, { confirm: true });
+  assert.equal(game.phase, 'reaction');
+  assert.equal(G.hostView(game).remainingMs, 0);
+});

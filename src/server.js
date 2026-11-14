@@ -102,6 +102,7 @@ async function api(req, res, url) {
         case 'resetBudgets': G.resetBudgets(game); break;
         case 'removePlayer': G.removePlayer(game, b.playerId); break;
         case 'start': G.startGame(game); break;
+        case 'intro': G.endIntro(game); break;
         case 'pause': G.setPaused(game, true); break;
         case 'resume': G.setPaused(game, false); break;
         case 'speed': G.setSpeed(game, b.speed); break;

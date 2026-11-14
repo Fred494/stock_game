@@ -47,7 +47,7 @@ function render() {
 
 function createView() {
   return `<div style="max-width:560px;margin:8vh auto;text-align:center"><h1 style="font-size:44px">ELVA<span class="up">STOCKS</span></h1><p class="muted">Host control center. Create a room, share the code, assign budgets, and run the game.</p>
-  <div class="card" style="text-align:left"><label class="row" style="gap:10px"><input type="checkbox" id="quick" ${quick ? 'checked' : ''} style="width:auto"> <span>Quick demo timing (about 8-15 s per phase) instead of the 60-minute game</span></label>
+  <div class="card" style="text-align:left"><p class="muted" style="margin:0">Jogo <b>sem tempo</b>: tu decides quando começa cada fase de cada ronda (notícia, comprar e vender, reação do mercado).</p>
   <button class="btn green" style="width:100%;margin-top:16px" data-act="create">Create Game</button></div>
   <p class="muted"><a href="index.html">About the game</a> · <a href="play.html">Join as a player</a></p></div>`;
 }
@@ -73,20 +73,31 @@ function lobbyView() {
 
 function gameView() {
   const running = S.phase;
-  const nextLabel = S.phase === 'news' ? 'Open trading now' : S.phase === 'trading' ? 'Close trading now' : S.phase === 'reaction' ? (S.round === S.shopAfter ? 'Open shop' : S.round === S.totalRounds ? 'Final results' : 'Next round') : 'Skip shop';
+  const nextLabel = S.phase === 'news' ? 'Abrir a negociação' : S.phase === 'trading' ? 'Fechar a negociação' : S.phase === 'reaction' ? (S.round === S.shopAfter ? 'Abrir a loja de power-ups' : S.round === S.totalRounds ? 'Ver resultados finais' : `Começar a ronda ${S.round + 1}`) : `Começar a ronda ${S.round + 1}`;
+  const steps = [['news', '① Notícia'], ['trading', '② Comprar e vender'], ['reaction', '③ Reação do mercado']];
   const byId = Object.fromEntries(S.stocks.map((s) => [s.id, s]));
   const ready = S.players.filter((p) => p.ready).length;
   const mv = S.lastSettlement;
+  const introCard = `<div class="card" style="grid-column:1/-1;border-color:var(--gold)"><h2 style="font-size:24px;margin:0 0 8px">Resumo rápido do jogo</h2>
+    <ul style="line-height:1.7;margin:0 0 14px;padding-left:20px;font-size:17px">
+      <li><b>Objetivo:</b> acabar com mais dinheiro (riqueza) depois de 12 rondas.</li>
+      <li><b>Cada ronda tem 3 fases:</b> ① ver a notícia, ② comprar e vender ações, ③ ver como o mercado reagiu.</li>
+      <li><b>Imposto:</b> 28% sobre os lucros ao vender (20% se mantiveres a ação 4 ou mais rondas). Perdas não pagam imposto.</li>
+      <li><b>Depois da ronda 6:</b> loja de power-ups (um por jogador).</li>
+      <li><b>Sem tempo:</b> o anfitrião inicia cada fase quando quiser.</li></ul>
+    <button class="btn green" data-act="intro">▶ Começar a ronda 1</button></div>`;
   return `${headBar()}
   <div class="grid">
-    <div class="card"><div class="muted">Round ${S.round}/${S.totalRounds} · ${esc(PHASE_LABEL[S.phase])} ${S.paused ? '<span class="chip paused">PAUSED</span>' : ''} <span class="chip">${S.speed}×</span></div>
-      <div class="timer num" id="timer"></div>
-      ${S.countdownMs != null ? `<div class="chip paused">All ready: advancing in ${Math.ceil(S.countdownMs / 1000)}s</div>` : ''}
+  ${S.intro ? introCard : ''}
+    <div class="card"><div class="muted">Ronda ${S.round}/${S.totalRounds} · ${esc(PHASE_LABEL[S.phase])} ${S.paused ? '<span class="chip paused">EM PAUSA</span>' : ''}</div>
+      ${S.phase === 'shop' ? '<div style="margin:10px 0;font-weight:700">Loja de power-ups aberta</div>' : `<div class="ctl" style="margin:10px 0;gap:6px">${steps.map(([k, l]) => `<span class="chip" style="${S.phase === k ? 'background:var(--blue);color:#fff' : ''}">${l}</span>`).join('')}</div>`}
+      ${S.timed ? '<div class="timer num" id="timer"></div>' : ''}
+      ${S.phase === 'trading' ? `<div class="muted" style="margin-bottom:6px">${ready}/${S.players.length} jogadores prontos</div>` : ''}
+      ${S.countdownMs != null ? `<div class="chip paused">Todos prontos: a avançar em ${Math.ceil(S.countdownMs / 1000)} s</div>` : ''}
       <div class="ctl" style="margin-top:12px">
-        <button class="btn ${S.paused ? 'green' : 'ghost'} sm" data-act="${S.paused ? 'resume' : 'pause'}">${S.paused ? '▶ Resume' : '⏸ Pause'}</button>
-        <button class="btn sm" data-act="next">⏭ ${nextLabel}</button>
-        <button class="btn ghost sm" data-act="nextround">⏩ Next round</button>
-        ${[1, 2, 4].map((v) => `<button class="btn ${S.speed === v ? '' : 'ghost'} sm" data-act="speed" data-v="${v}">${v}×</button>`).join('')}
+        <button class="btn green" data-act="next" ${S.intro ? 'disabled' : ''}>▶ ${nextLabel}</button>
+        ${S.timed ? `<button class="btn ${S.paused ? 'green' : 'ghost'} sm" data-act="${S.paused ? 'resume' : 'pause'}">${S.paused ? '▶ Continuar' : '⏸ Pausa'}</button>
+        ${[1, 2, 4].map((v) => `<button class="btn ${S.speed === v ? '' : 'ghost'} sm" data-act="speed" data-v="${v}">${v}×</button>`).join('')}` : ''}
       </div></div>
     <div class="card">${S.news ? `<span class="chip">Round ${S.news.round} event</span> <span class="chip" style="color:var(--gold)">fictional scenario</span><h2 style="font-size:22px;margin:8px 0">${esc(S.news.headline)}</h2><p>${esc(S.news.summary)}</p><p class="muted">Teaches: ${esc(S.news.teaches)}<br>Companies: ${S.news.relevant.map((id) => esc(byId[id].ticker)).join(', ')}</p>${S.news.real ? `<p class="muted">Real coverage: ${esc(S.news.real.headline)} (${esc(S.news.real.publisher)}) <a href="${esc(S.news.real.url)}" target="_blank" rel="noopener noreferrer">source</a></p>` : '<p class="muted" style="font-size:12px">No live news provider configured: showing the fictional practice scenario only.</p>'}` : ''}</div>
   </div>
@@ -117,7 +128,7 @@ app.addEventListener('click', async (e) => {
   const el = e.target.closest('[data-act]'); if (!el) return;
   const a = el.dataset.act;
   if (a === 'create') {
-    quick = $('#quick').checked;
+    quick = false;
     try { const r = await api('/api/games', { method: 'POST', body: { timing: quick ? 'quick' : 'standard' } }); host = { code: r.code, token: r.hostToken }; localStorage.setItem(KEY, JSON.stringify(host)); sig = ''; await poll(); render(); }
     catch (er) { toast(er.message, 'err'); }
   } else if (a === 'pres') { pres = !pres; render(); }
@@ -127,6 +138,7 @@ app.addEventListener('click', async (e) => {
   else if (a === 'same') { const v = window.prompt('Starting budget for every player (€):', '100000'); if (v != null) await hostCall({ action: 'setAllBudgets', euros: Number(v) }); }
   else if (a === 'start') await hostCall({ action: 'start' });
   else if (a === 'pause' || a === 'resume') await hostCall({ action: a });
+  else if (a === 'intro') await hostCall({ action: 'intro' });
   else if (a === 'next') await hostCall({ action: 'nextPhase' });
   else if (a === 'nextround') await hostCall({ action: 'nextRound' });
   else if (a === 'speed') await hostCall({ action: 'speed', speed: Number(el.dataset.v) });

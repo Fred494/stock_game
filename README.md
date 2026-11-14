@@ -14,7 +14,7 @@ npm start
 ```
 
 - Landing/explainer page: http://localhost:3000/
-- Host: http://localhost:3000/host.html (tick *Quick demo timing* for a ~6-minute game instead of 60 minutes)
+- Host: http://localhost:3000/host.html (games have no timer: the host starts every phase)
 - Players: scan the QR code on the host screen or open `/play.html` and enter the 6-character code
 
 To let phones on your Wi-Fi join, use your computer's LAN address (e.g. `http://192.168.1.20:3000/host.html`) so the QR code points there.
