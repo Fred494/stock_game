@@ -1,4 +1,4 @@
-import { API, api, esc, $, eur, eur0, pct, cls, logo, toast, POWERUP_INFO, lineChart, fmtClock, PHASE_LABEL } from './common.js';
+import { API, api, esc, $, eur, eur0, pct, cls, logo, toast, POWERUP_INFO, lineChart, priceChart, fmtClock, PHASE_LABEL } from './common.js';
 
 const KEY = 'mm-host';
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } };
@@ -52,6 +52,7 @@ function createView() {
   <p class="muted"><a href="index.html">About the game</a> · <a href="play.html">Join as a player</a></p></div>`;
 }
 
+let selStock = null;
 const headBar = () => `<div class="hbar"><span class="brand" style="font-size:18px">ELVA<b>STOCKS</b></span><span class="chip">Room ${esc(host.code)}</span><span class="grow"></span>
   ${S && S.status !== 'lobby' ? '<button class="btn ghost sm" data-act="restart">↺ Reiniciar jogo</button>' : ''}<button class="btn ghost sm" data-act="newroom">＋ Nova sala</button>
   <button class="btn ghost sm" data-act="pres">${pres ? 'Exit presentation' : '📺 Presentation mode'}</button></div>`;
@@ -94,8 +95,9 @@ function gameView() {
       <table><tr><th>#</th><th>Player</th><th class="r">Wealth</th><th class="r">Return</th><th class="r nopres">Cash</th><th class="r">Tax</th><th>Status</th></tr>
       ${S.leaderboard.map((l) => { const p = S.players.find((x) => x.id === l.id); return `<tr><td>${l.rank}</td><td><span class="dot ${p.connected ? 'on' : ''}"></span> <b>${esc(l.name)}</b> <span class="muted nopres">(${eur0(l.start)})</span></td><td class="r num">${eur0(l.wealth)}</td><td class="r num ${cls(l.ret)}">${pct(l.ret, 1)}</td><td class="r num nopres">${eur0(l.cash)}</td><td class="r num">${eur0(l.tax)}</td><td>${p.ready ? '<span class="chip open">Ready</span>' : p.connected ? '' : '<span class="chip closed">offline</span>'} ${p.powerup ? `<span class="pbadge">${POWERUP_INFO[p.powerup.type].icon} ${esc(p.powerup.status)}</span>` : ''}</td></tr>`; }).join('')}</table></div>
     <div class="card"><h2 style="font-size:20px">Market ${mv ? '· Round ' + mv.round + ' reaction' : '(starting prices)'}</h2>
+      ${selStock && byId[selStock] ? `<div style="margin:8px 0 14px"><b>${esc(byId[selStock].name)}</b> <span class="muted">${esc(byId[selStock].ticker)} · evolução do preço</span> <button class="btn ghost sm" data-act="stock" data-id="${esc(selStock)}" style="float:right">✕</button>${priceChart(byId[selStock].history || [], { w: 520, h: 200 })}</div>` : '<p class="muted" style="font-size:13px;margin:0 0 6px">Clica numa ação para ver o gráfico.</p>'}
       <table><tr><th></th><th>Stock</th><th class="r">Price</th><th class="r">Move</th></tr>
-      ${(mv ? [...mv.moves].sort((a, b) => b.pct - a.pct) : S.stocks.map((s) => ({ id: s.id, price: s.price, pct: 0 }))).map((m) => `<tr><td>${logo(byId[m.id], 26)}</td><td>${esc(byId[m.id].name)} <span class="muted">${esc(byId[m.id].ticker)}</span></td><td class="r num">${eur(m.price)}</td><td class="r num ${cls(m.pct)}">${mv ? pct(m.pct) : '—'}</td></tr>`).join('')}</table></div>
+      ${(mv ? [...mv.moves].sort((a, b) => b.pct - a.pct) : S.stocks.map((s) => ({ id: s.id, price: s.price, pct: 0 }))).map((m) => `<tr data-act="stock" data-id="${esc(m.id)}" style="cursor:pointer${selStock === m.id ? ';background:var(--bg3)' : ''}"><td>${logo(byId[m.id], 26)}</td><td>${esc(byId[m.id].name)} <span class="muted">${esc(byId[m.id].ticker)}</span></td><td class="r num">${eur(m.price)}</td><td class="r num ${cls(m.pct)}">${mv ? pct(m.pct) : '—'}</td></tr>`).join('')}</table></div>
   </div>
   <div class="card nopres" style="margin-top:16px"><h2 style="font-size:20px">Wealth by round</h2>${lineChart(S.leaderboard.map((l, i) => ({ name: l.name, color: colors[i % 6], points: S.history[l.id] || [] })), { w: 900, h: 260 })}</div>`;
 }
@@ -134,6 +136,7 @@ app.addEventListener('click', async (e) => {
     const r = await hostCall({ action: 'newRoom' });
     if (r?.nextCode) { host = { code: r.nextCode, token: host.token }; localStorage.setItem(KEY, JSON.stringify(host)); S = null; sig = ''; await poll(); render(); }
   }
+  else if (a === 'stock') { selStock = selStock === el.dataset.id ? null : el.dataset.id; sig = ''; render(); }
   else if (a === 'again') {
     const r = await hostCall({ action: 'playAgain' });
     if (r?.nextCode) { host = { code: r.nextCode, token: host.token }; localStorage.setItem(KEY, JSON.stringify(host)); S = null; sig = ''; await poll(); render(); }

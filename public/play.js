@@ -1,7 +1,8 @@
-import { api, esc, $, eur, eur0, pct, qtyFmt, cls, logo, toast, fx, POWERUP_INFO, lineChart, fmtClock, PHASE_LABEL } from './common.js';
+import { api, esc, $, eur, eur0, pct, qtyFmt, cls, logo, toast, fx, POWERUP_INFO, lineChart, priceChart, fmtClock, PHASE_LABEL } from './common.js';
 
 const AVATARS = ['#4F8EFF', '#2BD99F', '#F5C56B', '#F26B78', '#A78BFA', '#38BDF8', '#FB923C', '#F472B6'];
 const KEY = 'mm-session';
+const uid = () => { try { if (crypto.randomUUID) return crypto.randomUUID(); } catch { /* insecure context */ } return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`; };
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } };
 const save = (s) => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* ignore */ } };
 const clear = () => { try { localStorage.removeItem(KEY); } catch { /* ignore */ } };
@@ -178,29 +179,24 @@ function tradeView() {
   const open = S.phase === 'trading' && !S.me.ready;
   const buy = ui.side === 'buy';
   const amtC = Math.round(parseFloat(ui.amount || '0') * 100) || 0;
-  const quickBuy = [500, 1000, 5000, 10000].map((e) => `<button data-act="quick" data-v="${e}">€${e.toLocaleString('en-IE')}</button>`).join('') + `<button data-act="quickmax">Max</button>`;
-  const quickSell = [25, 50, 75].map((p) => `<button data-act="quickpct" data-v="${p}">${p}%</button>`).join('') + `<button data-act="quickmax">All</button>`;
+  const quickBuy = [500, 1000, 5000, 10000].map((e) => `<button data-act="quick" data-v="${e}">€${e.toLocaleString('en-IE')}</button>`).join('') + `<button data-act="quickmax">Máx</button>`;
+  const quickSell = [25, 50, 75].map((p) => `<button data-act="quickpct" data-v="${p}">${p}%</button>`).join('') + `<button data-act="quickmax">Tudo</button>`;
   const q = ui.quote;
   let detail = '';
   if (buy) {
-    const sh = amtC > 0 ? Math.floor((amtC * 1e6) / s.price) : 0;
-    detail = `<div class="kv"><span>Estimated shares</span><b class="num">${qtyFmt(sh)}</b></div><div class="kv"><span>Price per share</span><b class="num">${eur(s.price)}</b></div>`;
+    if (amtC > 0) detail = `Vais comprar ≈ <b class="num">${qtyFmt(Math.floor((amtC * 1e6) / s.price))}</b> ações · ficas com <b class="num">${eur(S.me.cash - amtC)}</b>`;
   } else if (q && q.ok) {
-    detail = `<div class="kv"><span>Gross sale</span><b class="num">${eur(q.gross)}</b></div><div class="kv"><span>Acquisition cost</span><b class="num">${eur(q.cost)}</b></div>
-      <div class="kv"><span>Realized ${q.gain >= 0 ? 'gain' : 'loss'}</span><b class="num ${cls(q.gain)}">${eur(q.gain)}</b></div>
-      <div class="kv"><span>Tax rate</span><b>${[...new Set(q.lots.filter((l) => l.gain > 0).map((l) => Math.round(l.rate * 100) + '%'))].join(' / ') || '0% (no gain)'}</b></div>
-      <div class="kv"><span>Tax deducted</span><b class="num down">−${eur(q.tax)}</b></div><div class="kv"><span>Net proceeds</span><b class="num up">${eur(q.net)}</b></div>`;
-  } else if (q && !q.ok && amtC > 0) detail = `<p class="down">${esc(q.error)}</p>`;
+    detail = `Recebes <b class="num up">${eur(q.net)}</b> (imposto ${eur(q.tax)})`;
+  } else if (q && !q.ok && amtC > 0) detail = `<span class="down">${esc(q.error)}</span>`;
   return `<div class="stack">
-    <button class="btn ghost sm" data-act="back" style="justify-self:start">← Back to Stocks</button>
-    <div class="card row">${logo(s, 56)}<div class="grow"><h2 style="font-size:20px">${esc(s.name)}</h2><span class="muted">${esc(s.ticker)} · ${esc(s.listing)}</span></div><div class="px" style="text-align:right"><div class="num" style="font-size:20px">${eur(s.price)}</div><div class="num ${cls(s.change)}">${S.settled ? pct(s.change) : ''}</div></div></div>
-    <div class="stats" style="margin:0"><div class="stat"><small>Shares owned</small><span class="num">${qtyFmt(s.owned)}</span><div class="muted" style="font-size:12px">${eur(s.ownedValue)}</div></div><div class="stat"><small>Available cash</small><span class="num">${eur(S.me.cash)}</span></div></div>
-    ${open ? '' : `<div class="cd">${S.me.ready ? 'You are marked Ready: tap "Edit my trades" on the stock list.' : S.paused ? 'Game paused.' : 'Trading is closed: you can browse but not trade.'}</div>`}
-    <div class="seg" role="tablist"><button class="${buy ? 'on buy' : ''}" data-act="side" data-v="buy">BUY</button><button class="${!buy ? 'on sell' : ''}" data-act="side" data-v="sell">SELL</button></div>
-    <div class="card"><label class="f" for="amt" style="margin-top:0">Amount in euros</label><input id="amt" class="amt" inputmode="decimal" placeholder="0.00" value="${esc(ui.amount)}"><div class="quick">${buy ? quickBuy : quickSell}</div></div>
-    ${detail ? `<div class="card">${detail}</div>` : ''}
-    ${S.me.powerup ? '' : ''}
-    <button class="btn ${buy ? 'green' : 'red'}" data-act="confirm" ${open && amtC > 0 && !ui.busy && (buy || (q && q.ok)) ? '' : 'disabled'}>${buy ? 'Confirm Buy' : 'Confirm Sell'}${amtC > 0 ? ' · ' + eur(amtC) : ''}</button>
+    <button class="btn ghost sm" data-act="back" style="justify-self:start">← Voltar</button>
+    <div class="card row">${logo(s, 48)}<div class="grow"><h2 style="font-size:20px">${esc(s.name)}</h2><span class="muted">${esc(s.ticker)}</span></div><div style="text-align:right"><div class="num" style="font-size:20px">${eur(s.price)}</div><div class="num ${cls(s.change)}">${pct(s.change)}</div></div></div>
+    <div class="card" style="padding:10px 8px">${priceChart(s.history || [])}</div>
+    <div class="stats" style="margin:0"><div class="stat"><small>Dinheiro disponível</small><span class="num">${eur(S.me.cash)}</span></div><div class="stat"><small>Tens desta ação</small><span class="num">${qtyFmt(s.owned)}</span><div class="muted" style="font-size:12px">${eur(s.ownedValue)}</div></div></div>
+    ${open ? '' : `<div class="cd">${S.me.ready ? 'Estás Pronto. Toca em "Editar" na lista para negociar.' : 'A negociação está fechada: só podes ver.'}</div>`}
+    <div class="seg" role="tablist"><button class="${buy ? 'on buy' : ''}" data-act="side" data-v="buy">COMPRAR</button><button class="${!buy ? 'on sell' : ''}" data-act="side" data-v="sell">VENDER</button></div>
+    <div class="card"><label class="f" for="amt" style="margin-top:0">Quanto dinheiro (€)</label><input id="amt" class="amt" inputmode="decimal" placeholder="0.00" value="${esc(ui.amount)}"><div class="quick">${buy ? quickBuy : quickSell}</div>${detail ? `<p class="muted" style="margin:12px 0 0;text-align:center">${detail}</p>` : ''}</div>
+    <button class="btn ${buy ? 'green' : 'red'}" data-act="confirm" ${open && amtC > 0 && !ui.busy && (buy || (q && q.ok)) ? '' : 'disabled'}>${buy ? 'Comprar' : 'Vender'}${amtC > 0 ? ' · ' + eur(amtC) : ''}</button>
   </div>`;
 }
 
@@ -284,7 +280,7 @@ document.addEventListener('click', async (e) => {
     case 'confirm': {
       if (ui.busy) return; ui.busy = true; render();
       const s = stock(); const c = Math.round(parseFloat(ui.amount) * 100);
-      const r = await act({ action: 'trade', stockId: ui.sel, side: ui.side, amount: c, requestId: crypto.randomUUID() });
+      const r = await act({ action: 'trade', stockId: ui.sel, side: ui.side, amount: c, requestId: uid() }).catch(() => null);
       ui.busy = false;
       if (r?.trade) {
         fx.beep(760, 90, 30);

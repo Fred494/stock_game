@@ -100,3 +100,26 @@ export function fmtClock(ms) {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 export const PHASE_LABEL = { lobby: 'Lobby', news: 'News & Analysis', trading: 'Trading', reaction: 'Market Reaction', shop: 'Power-Up Shop', finished: 'Final Results' };
+
+/** Simple price-history line chart for ONE stock. points = prices in cents, index 0 = opening price. */
+export function priceChart(points, { w = 480, h = 190, color } = {}) {
+  const pts = points.filter((v) => v != null);
+  if (pts.length < 2) return '<p class="muted" style="text-align:center;margin:8px 0">Ainda sem histórico.</p>';
+  let lo = Math.min(...pts), hi = Math.max(...pts);
+  const padv = (hi - lo) * 0.1 || hi * 0.02 || 1;
+  lo -= padv; hi += padv;
+  const pad = { l: 50, r: 10, t: 10, b: 22 };
+  const x = (i) => pad.l + (i / (pts.length - 1)) * (w - pad.l - pad.r);
+  const y = (v) => pad.t + (1 - (v - lo) / (hi - lo)) * (h - pad.t - pad.b);
+  const up = pts[pts.length - 1] >= pts[0];
+  const col = color || (up ? '#2BD99F' : '#F26B78');
+  let g = '';
+  for (let k = 0; k <= 3; k++) {
+    const v = lo + ((hi - lo) * k) / 3;
+    g += `<line x1="${pad.l}" x2="${w - pad.r}" y1="${y(v)}" y2="${y(v)}" stroke="#263a55"/><text x="${pad.l - 5}" y="${y(v) + 4}" fill="#8FA3BE" font-size="10" text-anchor="end">${(v / 100).toFixed(2)}</text>`;
+  }
+  pts.forEach((_, i) => { g += `<text x="${x(i)}" y="${h - 6}" fill="#8FA3BE" font-size="10" text-anchor="middle">${i === 0 ? 'Antes' : i === 1 ? 'Início' : 'R' + (i - 1)}</text>`; });
+  const line = pts.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+  const dots = pts.map((v, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.5" fill="${col}"/>`).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="Evolução do preço">${g}<polyline fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round" points="${line}"/>${dots}</svg>`;
+}

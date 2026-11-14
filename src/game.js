@@ -361,12 +361,14 @@ function stocksView(game, p) {
   const prev = r > 0 ? game.market.path[r - 1] : cur;
   const rel = game.round >= 1 && game.round <= TOTAL_ROUNDS && game.phase !== 'finished' && !['reaction', 'shop'].includes(game.phase)
     ? new Set(EVENTS[game.round - 1].relevant) : new Set();
+  const preludeFrom = Object.fromEntries((game.market.prelude || []).map((m) => [m.id, m.from]));
   const preludeById = Object.fromEntries((game.market.prelude || []).map((m) => [m.id, m.pct]));
   return STOCKS.map((s) => {
     const q = p ? positionQty(p, s.id) : 0;
     return {
       ...publicMeta(s), price: cur[s.id], change: r > 0 ? cur[s.id] / prev[s.id] - 1 : (preludeById[s.id] ?? 0),
       owned: q, ownedValue: valueCents(q, cur[s.id]), relevant: rel.has(s.id),
+      history: [preludeFrom[s.id] ?? game.market.path[0][s.id], ...game.market.path.slice(0, r + 1).map((pp) => pp[s.id])],
     };
   });
 }
