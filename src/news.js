@@ -45,7 +45,7 @@ export async function prefetchNews(game, onUpdate = () => {}) {
   const provider = providers[NEWS_PROVIDER] || providers.demo;
   if (provider === providers.demo) return;
   const cache = readCache();
-  for (const ev of EVENTS) {
+  for (const ev of game.market.events || EVENTS) {
     const hit = cache[ev.key];
     if (hit && Date.now() - hit.at < TTL) { game.news[ev.round - 1].real = hit.article; continue; }
     const article = await provider(ev.query);

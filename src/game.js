@@ -5,6 +5,7 @@ import {
 } from './config.js';
 import { STOCKS, STOCK_BY_ID, FX_SNAPSHOT } from './stocks.js';
 import { EVENTS, OPENING } from './events.js';
+const evOf = (game, r) => (game.market.events || EVENTS)[r - 1];
 import { buildMarket, roundReturn, direction } from './market.js';
 import { MICRO, valueCents, toCents } from './money.js';
 import { quoteBuy, quoteSell, applyBuy, applySell, positionQty, wealth, taxRate, REDUCED_RATE, STANDARD_RATE } from './trading.js';
@@ -45,7 +46,7 @@ export function createGame({ code, timing = 'standard', seed, durations, hostTok
     round: 0, phase: 'lobby', remainingMs: 0, totalMs: 0, paused: false, speed: 1,
     settledThrough: 0, countdownMs: null, settlements: {}, history: {},
     market: buildMarket(sd), fx: FX_SNAPSHOT,
-    news: EVENTS.map((e) => ({ round: e.round, real: null })),
+    news: Array.from({ length: 12 }, (_, i) => ({ round: i + 1, real: null })),
     nextCode: null, finishedAt: null, updatedAt: Date.now(),
   };
   return { game, hostToken: ht };
@@ -165,7 +166,7 @@ export function settleRound(game) {
       payouts[p.id] = payout;
     }
   }
-  const ev = EVENTS[r - 1];
+  const ev = evOf(game, r);
   const mr = game.market.rounds[r - 1];
   const moves = STOCKS.map((s) => {
     const ret = newP[s.id] / oldP[s.id] - 1;
@@ -179,7 +180,19 @@ export function settleRound(game) {
     }
     return { id: s.id, price: newP[s.id], prevPrice: oldP[s.id], pct: ret, direct: sens !== 0, why };
   });
-  game.settlements[r] = { round: r, title: ev.title, teaches: ev.teaches, reversed: mr.reversed, marketPct: mr.marketPct, moves, payouts };
+  // Per-player recap: what each position they held gained or lost this round (private to that player).
+  const pnl = {};
+  for (const p of game.players) {
+    const rows = [];
+    for (const id of Object.keys(p.holdings)) {
+      const q = positionQty(p, id);
+      if (q <= 0) continue;
+      rows.push({ id, qty: q, pnl: valueCents(q, newP[id]) - valueCents(q, oldP[id]), pct: newP[id] / oldP[id] - 1 });
+    }
+    rows.sort((a, b) => b.pnl - a.pnl);
+    pnl[p.id] = { rows, total: rows.reduce((a, x) => a + x.pnl, 0), payout: payouts[p.id] || 0, wealth: wealth(p, newP) };
+  }
+  game.settlements[r] = { round: r, title: ev.title, teaches: ev.teaches, reversed: mr.reversed, marketPct: mr.marketPct, moves, payouts, pnl };
   game.settledThrough = r;
   snapshot(game);
   game.updatedAt = Date.now();
@@ -298,7 +311,7 @@ export function purchasePowerup(game, p, type) {
   if (!POWERUPS[type]) fail('bad_powerup', 'Power-up desconhecido.');
   if (game.status !== 'running' || game.phase !== 'shop') fail('shop_closed', 'A loja de power-ups está fechada.');
   if (p.powerup) fail('already_owned', 'Só podes comprar um power-up.');
-  if (p.cash < POWERUP_COST) fail('no_cash', 'Dinheiro insuficiente para um power-up (€5.000).');
+  if (p.cash < POWERUP_COST) fail('no_cash', 'Dinheiro insuficiente para um power-up (€8.000).');
   p.cash -= POWERUP_COST;
   p.powerup = { type, status: 'owned', boughtRound: game.round, result: null };
   game.updatedAt = Date.now();
@@ -345,7 +358,7 @@ export function ranking(game) {
 const publicMeta = (s) => ({ id: s.id, name: s.name, ticker: s.ticker, listing: s.listing, vol: s.vol, domain: s.domain, priceSource: s.priceSource });
 
 function newsView(game, round) {
-  const ev = EVENTS[round - 1];
+  const ev = evOf(game, round);
   const real = game.news[round - 1].real;
   return {
     round, title: ev.title, headline: ev.headline, summary: ev.summary, teaches: ev.teaches,
@@ -360,7 +373,7 @@ function stocksView(game, p) {
   const cur = game.market.path[r];
   const prev = r > 0 ? game.market.path[r - 1] : cur;
   const rel = game.round >= 1 && game.round <= TOTAL_ROUNDS && game.phase !== 'finished' && !['reaction', 'shop'].includes(game.phase)
-    ? new Set(EVENTS[game.round - 1].relevant) : new Set();
+    ? new Set(evOf(game, game.round).relevant) : new Set();
   const preludeFrom = Object.fromEntries((game.market.prelude || []).map((m) => [m.id, m.from]));
   const preludeById = Object.fromEntries((game.market.prelude || []).map((m) => [m.id, m.pct]));
   return STOCKS.map((s) => {
@@ -388,7 +401,7 @@ function base(game) {
 function lastSettlement(game) {
   const s = game.settlements[game.settledThrough];
   if (!s) return null;
-  const { payouts, ...rest } = s;
+  const { payouts, pnl, ...rest } = s;
   return rest;
 }
 
@@ -422,6 +435,7 @@ export function playerView(game, p) {
     leaderboard: game.status === 'lobby' ? [] : leaderboard(game).map(({ id, name, avatar, wealth: w, ret, rank }) => ({ id, name, avatar, wealth: w, ret, rank })),
     lastSettlement: lastSettlement(game),
     myPayout: game.settlements[game.settledThrough]?.payouts?.[p.id] ?? null,
+    myRound: game.settlements[game.settledThrough]?.pnl?.[p.id] ?? null,
   };
   if (game.round >= 1 && game.status !== 'finished') v.news = newsView(game, game.round);
   if (game.status === 'finished') v.results = results(game);

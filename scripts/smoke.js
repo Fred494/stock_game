@@ -16,7 +16,7 @@ for (const n of ['Ana', 'Rui', 'Zoe']) bots.push({ n, ...(await call('POST', `/a
 await sleep(wait * 1000);
 const host = (b) => call('POST', `/api/games/${code}/host`, b, hostToken);
 const hs = await call('GET', `/api/games/${code}/state`, null, hostToken);
-const budgets = [125000, 120000, 100000, 110000, 105000, 115000];
+const budgets = [110000, 108000, 100000, 104000, 102000, 106000];
 for (let i = 0; i < hs.players.length; i++) await host({ action: 'setBudget', playerId: hs.players[i].id, euros: budgets[i] });
 await host({ action: 'start' });
 const stocks = ['NVDA', 'AAPL', 'KO', 'AZN', 'GALP', 'META'];

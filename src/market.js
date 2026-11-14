@@ -1,5 +1,5 @@
 import { STOCKS } from './stocks.js';
-import { EVENTS, OPENING } from './events.js';
+import { OPENING, pickEvents } from './events.js';
 
 export function mulberry32(a) {
   return function () {
@@ -30,6 +30,7 @@ const noiseFor = (rng, vol) => clamp((gauss(rng) * NOISE[vol]) / 2, NOISE[vol]);
  */
 export function buildMarket(seed) {
   const rng = mulberry32(seed >>> 0);
+  const events = pickEvents(rng); // 12 stories for this game, order and selection depend on the seed
 
   // Opening scenario (public history): how the stocks behaved BEFORE round 1, so the game starts with volatility.
   const base = Object.fromEntries(STOCKS.map((s) => [s.id, s.startPriceCents]));
@@ -45,7 +46,7 @@ export function buildMarket(seed) {
   const rounds = [];
 
   for (let r = 1; r <= 12; r++) {
-    const ev = EVENTS[r - 1];
+    const ev = events[r - 1];
     const prev = path[r - 1];
     const next = {};
     const detail = {};
@@ -58,7 +59,7 @@ export function buildMarket(seed) {
     path.push(next);
     rounds.push({ round: r, reversed: false, intensity: 1, marketPct: 0, detail });
   }
-  return { seed, path, rounds, prelude };
+  return { seed, path, rounds, prelude, events };
 }
 
 export const roundReturn = (market, r, id) => market.path[r][id] / market.path[r - 1][id] - 1;

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as G from '../src/game.js';
 import { buildMarket, NOISE } from '../src/market.js';
-import { EVENTS } from '../src/events.js';
+
 import { STOCKS } from '../src/stocks.js';
 import { quoteSell, quoteBuy, applyBuy, applySell, taxRate } from '../src/trading.js';
 import { toCents, MICRO } from '../src/money.js';
@@ -129,7 +129,7 @@ test('market is reproducible, bounded and varied', () => {
   for (let r = 1; r <= 12; r++) {
     for (const s of STOCKS) {
       const ret = a.path[r][s.id] / a.path[r - 1][s.id] - 1;
-      const cap = (Math.abs(EVENTS[r - 1].moves[s.id] || 0) + NOISE[s.vol]) / 100;
+      const cap = (Math.abs(a.events[r - 1].moves[s.id] || 0) + NOISE[s.vol]) / 100;
       assert.ok(Math.abs(ret) <= cap + 0.0015, `${s.id} r${r} ${ret}`);
       if (ret > 0.001) ups++; else if (ret < -0.001) downs++;
     }
@@ -224,7 +224,7 @@ function playTo(game, round, phase) {
   while (!(game.round === round && game.phase === phase)) G.advance(game, { confirm: true });
 }
 
-test('power-up shop: one per player, €5,000, no overdraft, only after round 6', () => {
+test('power-up shop: one per player, €8,000, no overdraft, only after round 6', () => {
   const { game, ps } = lobby(2, 1000); // €1,000 budgets
   G.startGame(game);
   assert.throws(() => G.purchasePowerup(game, ps[0].p, 'oracle'), /fechada/);
@@ -232,7 +232,7 @@ test('power-up shop: one per player, €5,000, no overdraft, only after round 6'
   assert.throws(() => G.purchasePowerup(game, ps[0].p, 'oracle'), /Dinheiro insuficiente/);
   ps[0].p.cash = 2_000_000;
   G.purchasePowerup(game, ps[0].p, 'oracle');
-  assert.equal(ps[0].p.cash, 1_500_000);
+  assert.equal(ps[0].p.cash, 1_200_000);
   assert.throws(() => G.purchasePowerup(game, ps[0].p, 'shield'), /Só podes comprar um/);
 });
 

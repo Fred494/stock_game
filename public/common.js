@@ -15,7 +15,7 @@ export async function api(path, { method = 'GET', body, token } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) { const e = new Error(data.error || 'Request failed'); e.code = data.code; e.status = res.status; throw e; }
+  if (!res.ok) { const e = new Error(data.error || 'O pedido falhou'); e.code = data.code; e.status = res.status; throw e; }
   return data;
 }
 
@@ -66,9 +66,9 @@ export const fx = {
 };
 
 export const POWERUP_INFO = {
-  oracle: { name: 'The Oracle', icon: '🔮', color: '#A78BFA', desc: 'Privately learn whether one stock will go UP, DOWN or stay FLAT this round.' },
-  shield: { name: 'Crash Shield', icon: '🛡️', color: '#4F8EFF', desc: 'If your portfolio loses value from price moves this round, get back up to €10,000.' },
-  rocket: { name: 'Profit Rocket', icon: '🚀', color: '#F26B78', desc: 'Pick a stock: if it rises, earn a bonus of 2× the gain on up to €50,000 invested (max €15,000).' },
+  oracle: { name: 'O Oráculo', icon: '🔮', color: '#A78BFA', desc: 'Descobre, só tu, se uma ação vai SUBIR, DESCER ou ficar IGUAL nesta ronda.' },
+  shield: { name: 'Escudo Anti-Queda', icon: '🛡️', color: '#4F8EFF', desc: 'Se a tua carteira perder valor nesta ronda, recebes de volta a perda até €10.000.' },
+  rocket: { name: 'Foguetão de Lucro', icon: '🚀', color: '#F26B78', desc: 'Escolhe uma ação: se subir, ganhas um bónus de 2× o ganho, até €50.000 investidos (máx. €15.000).' },
 };
 
 /** SVG line chart of wealth history. series: [{name,color,points:[cents...]}] */
@@ -99,7 +99,7 @@ export function fmtClock(ms) {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
-export const PHASE_LABEL = { lobby: 'Lobby', news: 'News & Analysis', trading: 'Trading', reaction: 'Market Reaction', shop: 'Power-Up Shop', finished: 'Final Results' };
+export const PHASE_LABEL = { lobby: 'Sala', news: 'Notícias', trading: 'Negociação', reaction: 'Reação do mercado', shop: 'Loja de Power-Ups', finished: 'Resultados finais' };
 
 /** Simple price-history line chart for ONE stock. points = prices in cents, index 0 = opening price. */
 export function priceChart(points, { w = 480, h = 190, color } = {}) {

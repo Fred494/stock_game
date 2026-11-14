@@ -2,6 +2,7 @@ import { api, esc, $, eur, eur0, pct, qtyFmt, cls, logo, toast, fx, POWERUP_INFO
 
 const AVATARS = ['#4F8EFF', '#2BD99F', '#F5C56B', '#F26B78', '#A78BFA', '#38BDF8', '#FB923C', '#F472B6'];
 const KEY = 'mm-session';
+const DIR_PT = { UP: 'SUBIR', DOWN: 'DESCER', FLAT: 'ficar IGUAL' };
 const uid = () => { try { if (crypto.randomUUID) return crypto.randomUUID(); } catch { /* insecure context */ } return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`; };
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } };
 const save = (s) => { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* ignore */ } };
@@ -37,7 +38,7 @@ async function poll() {
 }
 function onPhaseChange(from, to) {
   if (!from) return;
-  if (to === 'trading') { fx.beep(880, 160, 60); toast('Trading is open!'); }
+  if (to === 'trading') { fx.beep(880, 160, 60); toast('A negociação abriu!'); }
   if (to === 'reaction') { fx.beep(520, 200, 120); ui.screen = 'stocks'; ui.sel = null; }
   if (to === 'news') { ui.screen = 'stocks'; ui.sel = null; }
   if (to === 'finished') fx.beep(990, 400, 200);
@@ -69,31 +70,31 @@ function render() {
 function renderTop() {
   if (!S || S.status !== 'running') { $top.innerHTML = ''; return; }
   const open = S.phase === 'trading';
-  const status = open ? ['open', S.paused ? 'Trading Open (clock paused)' : 'Trading Open'] : S.paused ? ['paused', 'Paused'] : ['closed', 'Trading Closed'];
+  const status = open ? ['open', S.paused ? 'Negociação aberta (relógio parado)' : 'Negociação aberta'] : S.paused ? ['paused', 'Em pausa'] : ['closed', 'Negociação fechada'];
   $top.innerHTML = `<div class="top"><div class="top-in">
     <div class="row"><span class="brand">ELVA<b>STOCKS</b></span><span class="muted" style="font-weight:700">${esc(S.round)}/${S.totalRounds} · ${esc(PHASE_LABEL[S.phase])}</span><span class="clock num" id="clock"></span></div>
-    <div class="row" style="margin-top:6px"><span class="chip ${status[0]}">${status[1]}</span><span class="grow"></span><button class="btn ghost sm" data-act="sound" aria-label="Toggle sound">${fx.on ? '🔊' : '🔇'}</button></div>
-    <div class="stats"><div class="stat"><small>Cash</small><span class="num">${eur(S.me.cash)}</span></div><div class="stat"><small>Total wealth</small><span class="num">${eur(S.me.wealth)}</span></div></div>
+    <div class="row" style="margin-top:6px"><span class="chip ${status[0]}">${status[1]}</span><span class="grow"></span><button class="btn ghost sm" data-act="sound" aria-label="Ligar ou desligar o som">${fx.on ? '🔊' : '🔇'}</button></div>
+    <div class="stats"><div class="stat"><small>Dinheiro</small><span class="num">${eur(S.me.cash)}</span></div><div class="stat"><small>Riqueza total</small><span class="num">${eur(S.me.wealth)}</span></div></div>
     <div class="bar"><i id="bar"></i></div></div></div>`;
 }
 
 function joinView() {
   const p = new URLSearchParams(location.search);
-  return `<div class="hero"><h1>ELVA<b>STOCKS</b></h1><p class="muted">Join a game with the room code from your host.</p></div>
+  return `<div class="hero"><h1>ELVA<b>STOCKS</b></h1><p class="muted">Entra num jogo com o código da sala do anfitrião.</p></div>
   <form class="card" id="joinForm" autocomplete="off">
-    <label class="f" for="code">Room code</label><input id="code" class="code-in" maxlength="6" inputmode="text" autocapitalize="characters" value="${esc((p.get('code') || '').toUpperCase())}" placeholder="ABC123">
-    <label class="f" for="name">Your name</label><input id="name" maxlength="16" placeholder="e.g. Maria">
-    <label class="f">Avatar colour</label><div class="swatches">${AVATARS.map((c) => `<button type="button" class="sw ${c === ui.avatar ? 'sel' : ''}" data-act="avatar" data-v="${c}" style="background:${c}" aria-label="Colour ${c}"></button>`).join('')}</div>
+    <label class="f" for="code">Código da sala</label><input id="code" class="code-in" maxlength="6" inputmode="text" autocapitalize="characters" value="${esc((p.get('code') || '').toUpperCase())}" placeholder="ABC123">
+    <label class="f" for="name">O teu nome</label><input id="name" maxlength="16" placeholder="ex.: Maria">
+    <label class="f">Cor do avatar</label><div class="swatches">${AVATARS.map((c) => `<button type="button" class="sw ${c === ui.avatar ? 'sel' : ''}" data-act="avatar" data-v="${c}" style="background:${c}" aria-label="Cor ${c}"></button>`).join('')}</div>
     ${ui.joinErr ? `<p class="down" role="alert">${esc(ui.joinErr)}</p>` : ''}
-    <button class="btn green" style="width:100%;margin-top:18px">Join Game</button>
+    <button class="btn green" style="width:100%;margin-top:18px">Entrar no jogo</button>
   </form>
-  <p class="muted" style="text-align:center">Hosting? <a href="host.html">Create a game</a></p>`;
+  <p class="muted" style="text-align:center">Queres ser anfitrião? <a href="host.html">Criar um jogo</a></p>`;
 }
 
 function lobbyView() {
-  return `<div class="hero"><h1>You're in!</h1><p class="muted">Room <b>${esc(S.code)}</b> · waiting for the host to set budgets and start the game.</p></div>
-  <div class="card"><h3>Players (${S.players.length}/6)</h3>${S.players.map((p) => `<div class="lb"><span class="avatar" style="background:${esc(p.avatar)}">${esc(p.name[0].toUpperCase())}</span><b>${esc(p.name)}</b>${p.id === S.me.id ? '<span class="chip">You</span>' : ''}</div>`).join('')}</div>
-  <div class="card" style="margin-top:12px"><h3>How it works</h3><p class="muted">Each round: read the news (60s), trade (60s), then watch the market react. Prices are frozen while you trade. Profits are taxed when you sell: 28%, or 20% if held 4+ rounds. Highest wealth after round 12 wins.</p></div>`;
+  return `<div class="hero"><h1>Estás dentro!</h1><p class="muted">Sala <b>${esc(S.code)}</b> · à espera que o anfitrião defina os orçamentos e comece o jogo.</p></div>
+  <div class="card"><h3>Jogadores (${S.players.length}/6)</h3>${S.players.map((p) => `<div class="lb"><span class="avatar" style="background:${esc(p.avatar)}">${esc(p.name[0].toUpperCase())}</span><b>${esc(p.name)}</b>${p.id === S.me.id ? '<span class="chip">Tu</span>' : ''}</div>`).join('')}</div>
+  <div class="card" style="margin-top:12px"><h3>Como funciona</h3><p class="muted">Em cada ronda: lê a notícia (60 s), negoceia (60 s) e vê o mercado reagir. Os preços ficam parados enquanto negoceias. Os lucros pagam imposto quando vendes: 28%, ou 20% se mantiveres 4 ou mais rondas. Ganha quem tiver mais riqueza depois da ronda 12.</p></div>`;
 }
 
 // ---------- Screen 1: stock market
@@ -109,10 +110,10 @@ function openingCard() {
 function newsCard() {
   const n = S.news; if (!n) return '';
   const full = S.phase === 'news';
-  const real = n.real ? `<div class="card" style="margin-top:10px;background:var(--bg)"><span class="tag">REAL-WORLD COVERAGE</span><p style="margin:6px 0 2px"><b>${esc(n.real.headline)}</b></p><span class="muted" style="font-size:12px">${esc(n.real.publisher)} · ${n.real.publishedAt ? esc(new Date(n.real.publishedAt).toLocaleDateString()) : ''} · <a href="${esc(n.real.url)}" target="_blank" rel="noopener noreferrer">source</a></span></div>` : '';
-  return `<div class="card news pop"><span class="tag fict">PRACTICE SCENARIO · FICTIONAL</span> <span class="tag">Round ${n.round}</span>
+  const real = n.real ? `<div class="card" style="margin-top:10px;background:var(--bg)"><span class="tag">NOTÍCIA REAL</span><p style="margin:6px 0 2px"><b>${esc(n.real.headline)}</b></p><span class="muted" style="font-size:12px">${esc(n.real.publisher)} · ${n.real.publishedAt ? esc(new Date(n.real.publishedAt).toLocaleDateString()) : ''} · <a href="${esc(n.real.url)}" target="_blank" rel="noopener noreferrer">fonte</a></span></div>` : '';
+  return `<div class="card news pop"><span class="tag fict">CENÁRIO DE PRÁTICA · FICTÍCIO</span> <span class="tag">Ronda ${n.round}</span>
     <h3>${esc(n.headline)}</h3>
-    ${full ? `<p>${(n.extras && n.extras.length ? n.extras : [n.summary]).map((x) => esc(x)).join("<br>")}</p><p class="muted" style="font-size:13px">Learn: ${esc(n.teaches)}</p><p class="muted" style="font-size:13px">Stocks in the spotlight: ${n.relevant.slice(0, 8).map((id) => esc(id)).join(', ')}${n.relevant.length > 8 ? '…' : ''}</p>${real}`
+    ${full ? `<p>${(n.extras && n.extras.length ? n.extras : [n.summary]).map((x) => esc(x)).join("<br>")}</p><p class="muted" style="font-size:13px">Aprende: ${esc(n.teaches)}</p><p class="muted" style="font-size:13px">Ações em destaque: ${n.relevant.slice(0, 8).map((id) => esc(id)).join(', ')}${n.relevant.length > 8 ? '…' : ''}</p>${real}`
       : `<p class="muted" style="font-size:13px;margin:0">${esc(n.title)}</p>`}</div>`;
 }
 
@@ -123,12 +124,19 @@ function reactionCard() {
   const moves = [...r.moves].sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct));
   const lines = moves.filter((m) => m.why).slice(0, 8);
   const mine = S.me.powerup?.result && S.me.powerup.result.round === r.round ? S.me.powerup.result : null;
-  return `<div class="card pop"><span class="tag">MARKET REACTION · SIMULATED</span><h3 style="margin:6px 0">${esc(r.title)}</h3>
+  const mr = S.myRound;
+  const money = (c) => `<b class="num ${cls(c)}">${c > 0 ? '+' : c < 0 ? '−' : ''}${eur0(Math.abs(c))}</b>`;
+  const recap = mr ? `<div class="card pop" style="border-left:4px solid var(--green)"><h3 style="margin:0 0 6px">O teu resumo da ronda</h3>
+    ${mr.rows.length ? mr.rows.map((x) => `<div class="kv"><span>${x.pnl >= 0 ? 'Ganhaste' : 'Perdeste'} com <b>${esc(byId[x.id].name)}</b> <span class="muted">(${pct(x.pct, 1)})</span></span>${money(x.pnl)}</div>`).join('') : '<p class="muted" style="margin:4px 0">Não tinhas ações nesta ronda: o teu dinheiro ficou parado.</p>'}
+    ${mr.payout ? `<div class="kv"><span>Bónus do power-up</span>${money(mr.payout)}</div>` : ''}
+    <div class="kv"><span><b>Total da ronda</b></span>${money(mr.total + mr.payout)}</div>
+    <p class="muted" style="font-size:12px;margin:6px 0 0">${mr.rows.length && mr.rows[0].pnl > 0 ? `A tua melhor decisão: ${esc(byId[mr.rows[0].id].name)}.` : ''}${mr.rows.length && mr.rows[mr.rows.length - 1].pnl < 0 ? ` A pior: ${esc(byId[mr.rows[mr.rows.length - 1].id].name)}.` : ''}</p></div>` : '';
+  return `${recap}<div class="card pop" style="margin-top:12px"><span class="tag">REAÇÃO DO MERCADO · SIMULADA</span><h3 style="margin:6px 0">${esc(r.title)}</h3>
     <p class="muted" style="font-size:13px">${esc(r.teaches)}${r.reversed ? ' Desta vez o mercado ignorou a manchete: a notícia já estava refletida no preço.' : ''}</p>
-    ${S.myPayout ? `<div class="cd" style="margin-bottom:8px">${esc(POWERUP_INFO[S.me.powerup.type].icon)} Your ${esc(POWERUP_INFO[S.me.powerup.type].name)} paid ${eur(S.myPayout)}</div>` : mine ? `<div class="cd" style="margin-bottom:8px">Your power-up paid €0 this round</div>` : ''}
+    ${S.myPayout ? `<div class="cd" style="margin-bottom:8px">${esc(POWERUP_INFO[S.me.powerup.type].icon)} O teu ${esc(POWERUP_INFO[S.me.powerup.type].name)} pagou ${eur(S.myPayout)}</div>` : mine ? `<div class="cd" style="margin-bottom:8px">O teu power-up pagou €0 nesta ronda</div>` : ''}
     ${lines.map((m) => `<div class="move">${logo(byId[m.id], 34)}<div class="grow"><b>${esc(byId[m.id].name)}</b> <span class="num ${cls(m.pct)}">${pct(m.pct)}</span><div class="muted" style="font-size:13px">${esc(m.why)}</div></div></div>`).join('')}
   </div>
-  <div class="card" style="margin-top:12px"><h3>Leaderboard</h3>${S.leaderboard.map((p) => `<div class="lb"><span class="rk">${p.rank}</span><span class="avatar" style="background:${esc(p.avatar)}">${esc(p.name[0].toUpperCase())}</span><b class="grow">${esc(p.name)}${p.id === S.me.id ? ' (you)' : ''}</b><span class="num">${eur0(p.wealth)}</span><span class="num ${cls(p.ret)}" style="width:68px;text-align:right">${pct(p.ret, 1)}</span></div>`).join('')}</div>`;
+  <div class="card" style="margin-top:12px"><h3>Classificação</h3>${S.leaderboard.map((p) => `<div class="lb"><span class="rk">${p.rank}</span><span class="avatar" style="background:${esc(p.avatar)}">${esc(p.name[0].toUpperCase())}</span><b class="grow">${esc(p.name)}${p.id === S.me.id ? ' (tu)' : ''}</b><span class="num">${eur0(p.wealth)}</span><span class="num ${cls(p.ret)}" style="width:68px;text-align:right">${pct(p.ret, 1)}</span></div>`).join('')}</div>`;
 }
 
 function powerupCard() {
@@ -137,16 +145,16 @@ function powerupCard() {
   if (pu.status === 'used' && pu.type === 'oracle' && pu.result && pu.result.round === S.round && S.phase !== 'reaction') {
     const s = S.stocks.find((x) => x.id === pu.result.stockId);
     const d = pu.result.direction;
-    return `<div class="pu pop" style="--c:${info.color}"><span class="ic">${info.icon}</span> <b>The Oracle says:</b> <b>${esc(s.name)}</b> will be <b class="${d === 'UP' ? 'up' : d === 'DOWN' ? 'down' : 'gold'}">${esc(d)}</b> this round.<div class="muted" style="font-size:12px">Only you can see this. Exact size unknown.</div></div>`;
+    return `<div class="pu pop" style="--c:${info.color}"><span class="ic">${info.icon}</span> <b>O Oráculo diz:</b> <b>${esc(s.name)}</b> vai <b class="${d === 'UP' ? 'up' : d === 'DOWN' ? 'down' : 'gold'}">${esc(DIR_PT[d] || d)}</b> nesta ronda.<div class="muted" style="font-size:12px">Só tu vês isto. O tamanho exato é desconhecido.</div></div>`;
   }
   if (pu.status === 'active' && pu.round === S.round && S.phase !== 'reaction') {
-    return `<div class="pu" style="--c:${info.color}"><span class="ic">${info.icon}</span> <b>${esc(info.name)} is armed</b> for this round${pu.stockId ? ` on <b>${esc(S.stocks.find((x) => x.id === pu.stockId).name)}</b>` : ''}.</div>`;
+    return `<div class="pu" style="--c:${info.color}"><span class="ic">${info.icon}</span> <b>${esc(info.name)} está ativo</b> nesta ronda${pu.stockId ? ` em <b>${esc(S.stocks.find((x) => x.id === pu.stockId).name)}</b>` : ''}.</div>`;
   }
   if (pu.status === 'owned' && S.phase === 'news' && S.round > S.shopAfter) {
     const needs = pu.type !== 'shield';
     return `<div class="pu" style="--c:${info.color}"><div class="row"><span class="ic">${info.icon}</span><div class="grow"><b>${esc(info.name)}</b><div class="muted" style="font-size:13px">${esc(info.desc)}</div></div></div>
-      ${needs ? `<select id="puStock" style="margin-top:10px"><option value="">Choose a stock…</option>${S.stocks.map((s) => `<option value="${esc(s.id)}" ${ui.puStock === s.id ? 'selected' : ''}>${esc(s.name)} (${esc(s.ticker)})</option>`).join('')}</select>` : ''}
-      <button class="btn gold" style="width:100%;margin-top:10px" data-act="activate">Activate now (one use)</button></div>`;
+      ${needs ? `<select id="puStock" style="margin-top:10px"><option value="">Escolhe uma ação…</option>${S.stocks.map((s) => `<option value="${esc(s.id)}" ${ui.puStock === s.id ? 'selected' : ''}>${esc(s.name)} (${esc(s.ticker)})</option>`).join('')}</select>` : ''}
+      <button class="btn gold" style="width:100%;margin-top:10px" data-act="activate">Ativar agora (uma só vez)</button></div>`;
   }
   return '';
 }
@@ -160,16 +168,16 @@ function stocksView() {
   list.sort((a, b) => (b.relevant - a.relevant) || 0); // news-affected first, otherwise keep list order
   const canTrade = S.phase === 'trading';
   const dock = S.phase === 'trading'
-    ? `<div class="dock">${S.me.ready ? `<button class="btn ghost" data-act="unready">✓ Ready · Edit my trades</button>` : `<button class="btn green" data-act="ready">I'm Ready</button>`}${S.countdownMs != null ? `<div class="cd" style="margin-top:8px">Everyone is ready: closing trading in ${Math.ceil(S.countdownMs / 1000)}s</div>` : ''}</div>` : '';
+    ? `<div class="dock">${S.me.ready ? `<button class="btn ghost" data-act="unready">✓ Pronto · Editar as minhas operações</button>` : `<button class="btn green" data-act="ready">Estou pronto</button>`}${S.countdownMs != null ? `<div class="cd" style="margin-top:8px">Todos prontos: a negociação fecha em ${Math.ceil(S.countdownMs / 1000)} s</div>` : ''}</div>` : '';
   return `<div class="stack">
     ${openingCard()}${newsCard()}${powerupCard()}${reactionCard()}
     ${S.phase === 'trading' && !S.me.ready ? '' : ''}
-    <input id="search" type="search" placeholder="Search companies or tickers" value="${esc(ui.q)}" aria-label="Search stocks">
-    <div class="chips">${[['all', 'All Stocks'], ['news', 'News-Affected'], ['mine', 'My Holdings']].map(([k, l]) => `<button class="fchip ${ui.filter === k ? 'on' : ''}" data-act="filter" data-v="${k}">${l}</button>`).join('')}</div>
+    <input id="search" type="search" placeholder="Procurar empresas" value="${esc(ui.q)}" aria-label="Procurar ações">
+    <div class="chips">${[['all', 'Todas'], ['news', 'Afetadas pela notícia'], ['mine', 'As minhas']].map(([k, l]) => `<button class="fchip ${ui.filter === k ? 'on' : ''}" data-act="filter" data-v="${k}">${l}</button>`).join('')}</div>
     ${list.map((s) => `<button class="stock ${s.relevant ? 'rel' : ''}" data-act="open" data-id="${esc(s.id)}" ${''}>
-      ${logo(s)}<div class="grow"><div class="nm">${esc(s.name)}${s.owned > 0 ? `<span class="own">${qtyFmt(s.owned)}</span>` : ''}</div><div class="sub">${esc(s.ticker)}<span class="vol ${s.vol}">${esc(s.vol.toUpperCase())}</span></div></div>
-      <div class="px"><div class="num">${eur(s.price)}</div><div class="num ${cls(s.change)}" style="font-size:13px">${S.settled ? pct(s.change) : '—'}</div></div></button>`).join('') || '<p class="muted">No stocks match.</p>'}
-    <p class="muted" style="font-size:11px;text-align:center">Prices are simulated reference values in virtual euros (demo data). Logos belong to their owners.</p>
+      ${logo(s)}<div class="grow"><div class="nm">${esc(s.name)}${s.owned > 0 ? `<span class="own">${qtyFmt(s.owned)}</span>` : ''}</div><div class="sub">${esc(s.ticker)}<span class="vol ${s.vol}">${({ low: 'BAIXA', medium: 'MÉDIA', high: 'ALTA' })[s.vol]}</span></div></div>
+      <div class="px"><div class="num">${eur(s.price)}</div><div class="num ${cls(s.change)}" style="font-size:13px">${S.settled ? pct(s.change) : '—'}</div></div></button>`).join('') || '<p class="muted">Nenhuma ação encontrada.</p>'}
+    <p class="muted" style="font-size:11px;text-align:center">Os preços são valores simulados em euros virtuais (dados de demonstração). Os logótipos pertencem aos seus donos.</p>
   </div>${dock}${canTrade ? '' : ''}`;
 }
 
@@ -193,7 +201,7 @@ function tradeView() {
     <div class="card row">${logo(s, 48)}<div class="grow"><h2 style="font-size:20px">${esc(s.name)}</h2><span class="muted">${esc(s.ticker)}</span></div><div style="text-align:right"><div class="num" style="font-size:20px">${eur(s.price)}</div><div class="num ${cls(s.change)}">${pct(s.change)}</div></div></div>
     <div class="card" style="padding:10px 8px">${priceChart(s.history || [])}</div>
     <div class="stats" style="margin:0"><div class="stat"><small>Dinheiro disponível</small><span class="num">${eur(S.me.cash)}</span></div><div class="stat"><small>Tens desta ação</small><span class="num">${qtyFmt(s.owned)}</span><div class="muted" style="font-size:12px">${eur(s.ownedValue)}</div></div></div>
-    ${open ? '' : `<div class="cd">${S.me.ready ? 'Estás Pronto. Toca em "Editar" na lista para negociar.' : 'A negociação está fechada: só podes ver.'}</div>`}
+    ${open ? '' : `<div class="cd">${S.me.ready ? 'Estás pronto. Toca em "Editar as minhas operações" na lista para negociar.' : 'A negociação está fechada: só podes ver.'}</div>`}
     <div class="seg" role="tablist"><button class="${buy ? 'on buy' : ''}" data-act="side" data-v="buy">COMPRAR</button><button class="${!buy ? 'on sell' : ''}" data-act="side" data-v="sell">VENDER</button></div>
     <div class="card"><label class="f" for="amt" style="margin-top:0">Quanto dinheiro (€)</label><input id="amt" class="amt" inputmode="decimal" placeholder="0.00" value="${esc(ui.amount)}"><div class="quick">${buy ? quickBuy : quickSell}</div>${detail ? `<p class="muted" style="margin:12px 0 0;text-align:center">${detail}</p>` : ''}</div>
     <button class="btn ${buy ? 'green' : 'red'}" data-act="confirm" ${open && amtC > 0 && !ui.busy && (buy || (q && q.ok)) ? '' : 'disabled'}>${buy ? 'Comprar' : 'Vender'}${amtC > 0 ? ' · ' + eur(amtC) : ''}</button>
@@ -205,21 +213,21 @@ function finalView() {
   const R = S.results, me = R.players.find((p) => p.id === S.me.id), c = R.champion;
   const colors = ['#2BD99F', '#4F8EFF', '#F5C56B', '#F26B78', '#A78BFA', '#38BDF8'];
   const byId = Object.fromEntries(S.stocks.map((s) => [s.id, s]));
-  const pu = (p) => (p.powerup ? `${POWERUP_INFO[p.powerup.type].icon} ${POWERUP_INFO[p.powerup.type].name}${p.powerup.result ? ' · paid ' + eur0(p.powerup.result.payout ?? 0) + (p.powerup.result.direction ? ' (' + p.powerup.result.direction + ')' : '') : ' · unused'}` : 'No power-up');
+  const pu = (p) => (p.powerup ? `${POWERUP_INFO[p.powerup.type].icon} ${POWERUP_INFO[p.powerup.type].name}${p.powerup.result ? ' · pagou ' + eur0(p.powerup.result.payout ?? 0) + (p.powerup.result.direction ? ' (' + (DIR_PT[p.powerup.result.direction] || p.powerup.result.direction) + ')' : '') : ' · por usar'}` : 'Sem power-up');
   return `<div class="stack">
-    <div class="card champ pop"><div class="trophy">🏆</div><div class="muted">ELVASTOCKS CHAMPION</div><h1 style="font-size:30px;margin:6px 0">${esc(c.name)}</h1><div class="num gold" style="font-size:24px">${eur(c.wealth)}</div><div class="${cls(c.ret)} num">${pct(c.ret)} · started with ${eur0(c.start)}</div></div>
-    ${R.awards?.bestReturn ? `<div class="card" style="text-align:center">📈 Best return: <b>${esc(R.awards.bestReturn.name)}</b> <span class="up num">${pct(R.awards.bestReturn.ret, 1)}</span><div class="muted" style="font-size:12px">Starting budgets differ, so % return is the fairest skill measure.</div></div>` : ''}
-    <div class="card"><h3>You finished #${me.rank}</h3><p class="muted">${esc(me.profile.name)}: ${esc(me.profile.why)}</p>
-      <div class="kv"><span>Final wealth</span><b class="num">${eur(me.wealth)}</b></div><div class="kv"><span>Net gain/loss</span><b class="num ${cls(me.gain)}">${eur(me.gain)}</b></div><div class="kv"><span>Taxes paid</span><b class="num">${eur(me.tax)}</b></div>
-      ${me.best ? `<div class="kv"><span>Best investment</span><b>${esc(me.best.name)} ${eur0(me.best.pnl)}</b></div>` : ''}${me.worst ? `<div class="kv"><span>Worst investment</span><b>${esc(me.worst.name)} ${eur0(me.worst.pnl)}</b></div>` : ''}
+    <div class="card champ pop"><div class="trophy">🏆</div><div class="muted">CAMPEÃO ELVASTOCKS</div><h1 style="font-size:30px;margin:6px 0">${esc(c.name)}</h1><div class="num gold" style="font-size:24px">${eur(c.wealth)}</div><div class="${cls(c.ret)} num">${pct(c.ret)} · começou com ${eur0(c.start)}</div></div>
+    ${R.awards?.bestReturn ? `<div class="card" style="text-align:center">📈 Melhor retorno: <b>${esc(R.awards.bestReturn.name)}</b> <span class="up num">${pct(R.awards.bestReturn.ret, 1)}</span><div class="muted" style="font-size:12px">Os orçamentos iniciais são diferentes, por isso o retorno em % é a medida mais justa.</div></div>` : ''}
+    <div class="card"><h3>Ficaste em ${me.rank}.º lugar</h3><p class="muted">${esc(me.profile.name)}: ${esc(me.profile.why)}</p>
+      <div class="kv"><span>Riqueza final</span><b class="num">${eur(me.wealth)}</b></div><div class="kv"><span>Ganho/perda total</span><b class="num ${cls(me.gain)}">${eur(me.gain)}</b></div><div class="kv"><span>Impostos pagos</span><b class="num">${eur(me.tax)}</b></div>
+      ${me.best ? `<div class="kv"><span>Melhor investimento</span><b>${esc(me.best.name)} ${eur0(me.best.pnl)}</b></div>` : ''}${me.worst ? `<div class="kv"><span>Pior investimento</span><b>${esc(me.worst.name)} ${eur0(me.worst.pnl)}</b></div>` : ''}
       <div class="kv"><span>Power-up</span><b>${pu(me)}</b></div>
-      <div class="kv"><span>Reduced 20% tax</span><b>${me.patience.reducedRateSales ? `used ${me.patience.reducedRateSales}×, saved ${eur0(me.patience.taxSaved)}` : 'not used'}</b></div></div>
-    <div class="card"><h3>Leaderboard</h3>${R.players.map((p) => `<details class="lb" style="display:block"><summary class="row"><span class="rk">${p.rank}</span><span class="avatar" style="background:${esc(p.avatar)}">${esc(p.name[0].toUpperCase())}</span><b class="grow">${esc(p.name)}</b><span class="num">${eur0(p.wealth)}</span></summary>
-      <div style="padding:8px 0 4px 32px;font-size:13px" class="muted">${esc(p.profile.name)} · ${pct(p.ret, 1)} · tax ${eur0(p.tax)}<br>${pu(p)}<br>${p.holdings.length ? 'Holds: ' + p.holdings.map((h) => esc(byId[h.id].ticker) + ' ' + eur0(h.value)).join(', ') : 'Holds only cash'}</div></details>`).join('')}</div>
-    <div class="card"><h3>Wealth by round</h3>${lineChart(R.players.map((p, i) => ({ name: p.name, color: colors[i % 6], points: p.history })), { w: 420, h: 240 })}</div>
-    <div class="card"><h3>What moved the market</h3>${R.events.map((e) => `<div class="move"><b style="width:26px">${e.round}</b><div class="grow"><b>${esc(e.title)}</b>${e.reversed ? ' <span class="tag">priced-in reversal</span>' : ''}<div class="muted" style="font-size:13px">${e.top.map((m) => `${esc(byId[m.id].ticker)} <span class="${cls(m.pct)}">${pct(m.pct, 1)}</span>`).join(' · ')}</div><div class="muted" style="font-size:12px">${esc(e.teaches)}</div></div></div>`).join('')}</div>
-    <p class="muted" style="font-size:12px">${esc(R.tiebreak)} Simulated market (seed ${esc(R.seed)}); capital gains tax rules are in-game mechanics, not tax advice.</p>
-    ${S.nextCode ? `<button class="btn green" data-act="again">Join next game (${esc(S.nextCode)})</button>` : `<p class="muted" style="text-align:center">Ask the host to press “Play again”.</p>`}
+      <div class="kv"><span>Imposto reduzido de 20%</span><b>${me.patience.reducedRateSales ? `usado ${me.patience.reducedRateSales}×, poupaste ${eur0(me.patience.taxSaved)}` : 'não usado'}</b></div></div>
+    <div class="card"><h3>Classificação</h3>${R.players.map((p) => `<details class="lb" style="display:block"><summary class="row"><span class="rk">${p.rank}</span><span class="avatar" style="background:${esc(p.avatar)}">${esc(p.name[0].toUpperCase())}</span><b class="grow">${esc(p.name)}</b><span class="num">${eur0(p.wealth)}</span></summary>
+      <div style="padding:8px 0 4px 32px;font-size:13px" class="muted">${esc(p.profile.name)} · ${pct(p.ret, 1)} · imposto ${eur0(p.tax)}<br>${pu(p)}<br>${p.holdings.length ? 'Tem: ' + p.holdings.map((h) => esc(byId[h.id].ticker) + ' ' + eur0(h.value)).join(', ') : 'Só tem dinheiro'}</div></details>`).join('')}</div>
+    <div class="card"><h3>Riqueza por ronda</h3>${lineChart(R.players.map((p, i) => ({ name: p.name, color: colors[i % 6], points: p.history })), { w: 420, h: 240 })}</div>
+    <div class="card"><h3>O que mexeu com o mercado</h3>${R.events.map((e) => `<div class="move"><b style="width:26px">${e.round}</b><div class="grow"><b>${esc(e.title)}</b>${e.reversed ? '' : ''}<div class="muted" style="font-size:13px">${e.top.map((m) => `${esc(byId[m.id].ticker)} <span class="${cls(m.pct)}">${pct(m.pct, 1)}</span>`).join(' · ')}</div><div class="muted" style="font-size:12px">${esc(e.teaches)}</div></div></div>`).join('')}</div>
+    <p class="muted" style="font-size:12px">${esc(R.tiebreak)} Mercado simulado (semente ${esc(R.seed)}); as regras de imposto são mecânicas do jogo, não aconselhamento fiscal.</p>
+    ${S.nextCode ? `<button class="btn green" data-act="again">Entrar no próximo jogo (${esc(S.nextCode)})</button>` : `<p class="muted" style="text-align:center">Pede ao anfitrião para carregar em “Jogar outra vez”.</p>`}
   </div>`;
 }
 
@@ -227,14 +235,14 @@ function finalView() {
 function renderOverlay() {
   if (!S || S.phase !== 'shop') { $ov.innerHTML = ''; return; }
   const owned = S.me.powerup;
-  $ov.innerHTML = `<div class="modal"><div class="sheet"><h2>⚡ Power-Up Shop</h2><p class="muted">Closes in <b id="clock2"></b>. Buy at most one for ${eur0(S.powerupCost)}. Activate it once in Rounds 7-12, during the news phase. No refunds.</p>
+  $ov.innerHTML = `<div class="modal"><div class="sheet"><h2>⚡ Loja de Power-Ups</h2><p class="muted">Fecha em <b id="clock2"></b>. Podes comprar um por ${eur0(S.powerupCost)}. Ativa-o uma vez nas rondas 7 a 12, na fase de notícias. Sem reembolsos.</p>
     <div class="stack">${Object.entries(POWERUP_INFO).map(([k, i]) => {
     const can = !owned && S.me.cash >= S.powerupCost;
     const armed = ui.confirmPU === k;
     return `<div class="pu" style="--c:${i.color}"><div class="row"><span class="ic">${i.icon}</span><div class="grow"><b style="font-size:18px">${esc(i.name)}</b><div class="gold num">${eur0(S.powerupCost)}</div></div></div><p class="muted" style="font-size:14px">${esc(i.desc)}</p>
-      <button class="btn ${armed ? 'gold' : ''}" style="width:100%" data-act="buypu" data-v="${k}" ${can ? '' : 'disabled'}>${owned?.type === k ? '✓ Owned' : armed ? 'Tap again to confirm' : owned ? 'Already bought one' : can ? 'Buy' : 'Not enough cash'}</button></div>`;
+      <button class="btn ${armed ? 'gold' : ''}" style="width:100%" data-act="buypu" data-v="${k}" ${can ? '' : 'disabled'}>${owned?.type === k ? '✓ Comprado' : armed ? 'Toca outra vez para confirmar' : owned ? 'Já compraste um' : can ? 'Comprar' : 'Dinheiro insuficiente'}</button></div>`;
   }).join('')}</div>
-    <button class="btn ghost" style="width:100%;margin-top:14px" data-act="closeshop">${owned ? 'Done' : 'No thanks'}</button></div></div>`;
+    <button class="btn ghost" style="width:100%;margin-top:14px" data-act="closeshop">${owned ? 'Feito' : 'Não, obrigado'}</button></div></div>`;
   tickShop();
 }
 function tickShop() { const c = $('#clock2'); if (c && S) c.textContent = fmtClock(S.paused ? S.remainingMs : Math.max(0, clockAt - performance.now())); }
@@ -275,8 +283,8 @@ document.addEventListener('click', async (e) => {
     case 'quick': ui.amount = String(Math.min(Number(v), S.me.cash / 100)); render(); break;
     case 'quickmax': ui.amount = ui.side === 'buy' ? (S.me.cash / 100).toFixed(2) : (stock().ownedValue / 100).toFixed(2); requote(); render(); break;
     case 'quickpct': ui.amount = ((stock().ownedValue * Number(v)) / 10000).toFixed(2); requote(); render(); break;
-    case 'ready': fx.beep(700, 80, 40); await act({ action: 'ready' }, "You're ready"); break;
-    case 'unready': await act({ action: 'unready' }, 'Trading unlocked'); break;
+    case 'ready': fx.beep(700, 80, 40); await act({ action: 'ready' }, 'Estás pronto'); break;
+    case 'unready': await act({ action: 'unready' }, 'Podes voltar a negociar'); break;
     case 'confirm': {
       if (ui.busy) return; ui.busy = true; render();
       const s = stock(); const c = Math.round(parseFloat(ui.amount) * 100);
@@ -284,20 +292,20 @@ document.addEventListener('click', async (e) => {
       ui.busy = false;
       if (r?.trade) {
         fx.beep(760, 90, 30);
-        toast(ui.side === 'buy' ? `Bought ${qtyFmt(r.trade.qty)} ${s.ticker} for ${eur(c)}` : `Sold ${s.ticker}: net ${eur(r.trade.net)} (tax ${eur(r.trade.tax)})`, 'ok');
+        toast(ui.side === 'buy' ? `Compraste ${qtyFmt(r.trade.qty)} ${s.ticker} por ${eur(c)}` : `Vendeste ${s.ticker}: recebeste ${eur(r.trade.net)} (imposto ${eur(r.trade.tax)})`, 'ok');
         ui.amount = ''; ui.quote = null;
       }
       render(); break;
     }
     case 'activate': {
       const sel = $('#puStock'); const needs = S.me.powerup.type !== 'shield';
-      if (needs && !(sel && sel.value)) { toast('Choose a stock first', 'err'); return; }
-      const r = await act({ action: 'activatePowerup', stockId: sel?.value }, 'Power-up activated!');
+      if (needs && !(sel && sel.value)) { toast('Escolhe primeiro uma ação', 'err'); return; }
+      const r = await act({ action: 'activatePowerup', stockId: sel?.value }, 'Power-up ativado!');
       if (r) fx.beep(980, 250, 120);
       break;
     }
     case 'buypu':
-      if (ui.confirmPU === v) { ui.confirmPU = null; const r = await act({ action: 'buyPowerup', type: v }, 'Power-up purchased'); if (r) fx.beep(900, 200, 100); }
+      if (ui.confirmPU === v) { ui.confirmPU = null; const r = await act({ action: 'buyPowerup', type: v }, 'Power-up comprado'); if (r) fx.beep(900, 200, 100); }
       else { ui.confirmPU = v; render(); }
       break;
     case 'closeshop': $ov.innerHTML = ''; break;

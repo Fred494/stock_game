@@ -4,7 +4,7 @@ const KEY = 'mm-host';
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } };
 let host = load();
 let S = null, sig = '', clockAt = 0;
-let presets = [125000, 120000, 115000, 110000, 105000, 100000];
+let presets = [110000, 108000, 106000, 104000, 102000, 100000];
 let pres = false, quick = false;
 const app = $('#app');
 const colors = ['#2BD99F', '#4F8EFF', '#F5C56B', '#F26B78', '#A78BFA', '#38BDF8'];

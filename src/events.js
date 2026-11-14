@@ -7,7 +7,7 @@ const mk = (round, key, title, headline, extras, teaches, query, moves, roles) =
   return { round, key, title, headline, summary: extras.join(' · '), extras, teaches, relevant: Object.keys(moves), bias: 0, query, moves, sens, roles };
 };
 
-export const EVENTS = [
+export const EVENT_POOL = [
   mk(1, 'pandemic', 'Nova pandemia', '🦠 Nova pandemia: o mundo volta a ficar fechado em casa',
     ['📦 Amazon contrata 100 mil pessoas para entregas', '🧻 Corrida ao papel higiénico nos supermercados'],
     'Choques que obrigam as pessoas a ficar em casa: quem vive do digital ganha, quem vive de viagens e petróleo perde.', 'pandemic lockdown stocks',
@@ -68,7 +68,69 @@ export const EVENTS = [
     'Quando a internet cai, perdem as empresas digitais e ganham as físicas e as independentes.', 'global internet outage',
     { SPCX: 30, WMT: 15, COST: 15, KO: 10, EDP: 10, PG: 10, ZM: -40, NFLX: -30, META: -30, AMZN: -25 },
     { SPCX: 'A única internet que funciona.', WMT: 'Lojas físicas vendem pilhas e velas.', COST: 'Lojas físicas vendem pilhas e velas.', KO: 'Bebidas para o apagão.', EDP: 'Eletricidade é essencial.', PG: 'Bens de primeira necessidade.', ZM: 'Sem internet não há videochamadas.', NFLX: 'Sem internet não há streaming.', META: 'Sem internet não há redes sociais.', AMZN: 'Sem internet não há compras online.' }),
+  mk(13, 'cat-video', 'Vídeo de gato viral', '🐱 Vídeo de gato viral rouba mil milhões de visualizações num dia',
+    ['📱 Todos a filmar os próprios gatos', '📺 Séries ficam sem espectadores'],
+    'A atenção das pessoas é limitada: o que ganha uma plataforma, outras perdem.', 'viral video social media',
+    { META: 15, NFLX: -10, ZM: -5, AAPL: 5 },
+    { META: 'Mais tempo das pessoas nas redes sociais.', NFLX: 'Menos gente a ver séries.', ZM: 'Menos reuniões, mais gatos.', AAPL: 'Mais câmaras de telemóvel a filmar.' }),
+  mk(14, 'pilot-strike', 'Greve dos pilotos', '✈️ Greve dos pilotos paralisa os céus da Europa',
+    ['🚆 Comboios esgotados em todo o continente', '💻 Reuniões online voltam em força'],
+    'Greves e paragens afetam diretamente quem depende do serviço parado.', 'airline strike pilots europe',
+    { RYA: -35, GALP: -10, ZM: 10, AMZN: 10 },
+    { RYA: 'Sem pilotos, os aviões não saem do chão.', GALP: 'Menos voos, menos combustível vendido.', ZM: 'Reuniões online substituem viagens.', AMZN: 'Mais compras online, menos viagens.' }),
+  mk(15, 'e-bikes', 'Bicicletas elétricas', '🚲 Governo oferece uma bicicleta elétrica a cada cidadão',
+    ['⚡ Procura de eletricidade dispara', '⛽ Bombas de gasolina ficam vazias'],
+    'Políticas públicas podem mudar a procura de energia de um tipo para outro.', 'electric bicycle subsidy energy',
+    { EDP: 15, GALP: -15, '2222': -10, INTC: 5 },
+    { EDP: 'Mais carregadores, mais eletricidade vendida.', GALP: 'As pessoas deixam de comprar combustível.', '2222': 'Menos procura de petróleo.', INTC: 'Mais eletrónica nas bicicletas.' }),
+  mk(16, 'gold-iphone', 'iPhone de luxo', '📱 Apple lança iPhone de €5.000 e esgota em uma hora',
+    ['🏭 TSMC trabalha dia e noite para fazer os chips', '💳 Compras em prestações disparam'],
+    'Produtos premium podem aumentar lucros, e os fornecedores também ganham.', 'luxury smartphone launch sold out',
+    { AAPL: 30, TSM: 10, MA: 5, '005930': -10 },
+    { AAPL: 'Esgota em uma hora: procura enorme.', TSM: 'Fabrica os chips do novo modelo.', MA: 'Compras a prestações aumentam.', '005930': 'A rival perde atenção.' }),
+  mk(17, 'shampoo-recall', 'Champô retirado', '🚨 Johnson & Johnson retira o champô mais vendido do mercado',
+    ['🧴 Procter & Gamble sem stock nas lojas', '🛒 Walmart reorganiza prateleiras'],
+    'Um problema de qualidade prejudica a marca, e os concorrentes aproveitam.', 'product recall shampoo',
+    { JNJ: -25, PG: 15, WMT: 5 },
+    { JNJ: 'Retirada do produto e desconfiança dos clientes.', PG: 'Concorrente direta ganha clientes.', WMT: 'Vende mais marcas alternativas.' }),
+  mk(18, 'sugar-tax', 'Imposto sobre o açúcar', '🍬 Europa cria um imposto sobre todas as bebidas com açúcar',
+    ['💊 Farmácias vendem mais produtos de saúde', '🛒 Supermercados vendem mais água'],
+    'Impostos e regras de saúde podem mudar o que as pessoas compram.', 'sugar tax soft drinks',
+    { KO: -20, PG: 5, AZN: 10 },
+    { KO: 'Bebidas ficam mais caras e vendem menos.', PG: 'Mais produtos de saúde e higiene vendidos.', AZN: 'Mais procura de produtos de saúde.' }),
+  mk(19, 'cyberattack', 'Ciberataque nos pagamentos', '🕵️ Ciberataque paralisa o sistema de pagamentos com cartão',
+    ['💶 Pagamentos em dinheiro voltam às lojas', '🛒 Compras em pânico nos supermercados'],
+    'Falhas de segurança abalam a confiança em empresas de pagamentos.', 'cyberattack payment system outage',
+    { V: -25, MA: -25, AMZN: -10, COST: 5, WMT: 5 },
+    { V: 'O ataque atinge a sua rede de pagamentos.', MA: 'O ataque atinge a sua rede de pagamentos.', AMZN: 'Compras online falham sem pagamentos.', COST: 'Lojas físicas aceitam dinheiro.', WMT: 'Lojas físicas aceitam dinheiro.' }),
+  mk(20, 'ad-boom', 'Super Bowl dos anúncios', '📢 Anunciantes gastam fortunas no maior evento de publicidade do ano',
+    ['🥤 Coca-Cola faz o anúncio mais caro da história', '📦 Amazon compra intervalos inteiros'],
+    'Quando as empresas gastam mais em publicidade, ganham as plataformas que a mostram.', 'advertising spending record super bowl',
+    { META: 25, NFLX: 10, KO: 10, AMZN: 5 },
+    { META: 'Recebe a maior parte do dinheiro dos anúncios.', NFLX: 'Mais anúncios nas séries.', KO: 'O anúncio mais caro aumenta as vendas.', AMZN: 'Compra e vende publicidade.' }),
+  mk(21, 'eu-fab', 'Fábrica na Europa', '🏆 TSMC anuncia a maior fábrica de chips da Europa',
+    ['⚡ EDP vai fornecer a energia da fábrica', '😟 Intel teme perder clientes locais'],
+    'Quando um rival chega ao teu mercado, perdes quota de mercado.', 'chip factory europe investment',
+    { TSM: 25, INTC: -15, '005930': -10, EDP: 5 },
+    { TSM: 'Novos clientes e apoios na Europa.', INTC: 'Perde clientes locais para a rival.', '005930': 'A rival ganha terreno.', EDP: 'Vai fornecer energia à fábrica.' }),
+  mk(22, 'mega-merger', 'FINAL: Mega fusão', '🤝 FINAL: Amazon anuncia a compra da Walmart',
+    ['🏬 Costco tenta responder com preços mais baixos', '🎬 Netflix aproveita para lançar promoção'],
+    'Fusões de gigantes mexem com todos os concorrentes.', 'retail merger amazon walmart',
+    { AMZN: 30, WMT: -25, COST: -15, NFLX: 5, V: 10, MA: 10 },
+    { AMZN: 'Cresce com a compra da maior retalhista.', WMT: 'Deixa de existir como empresa independente.', COST: 'Passa a ter um concorrente gigante.', NFLX: 'Promoção atrai novos clientes.', V: 'Mais pagamentos a processar.', MA: 'Mais pagamentos a processar.' }),
 ];
+
+export const FINALE_KEYS = ['blackout', 'mega-merger'];
+/** The original 12 stories, in their original order (fallback for old saved games and tests). */
+export const EVENTS = EVENT_POOL.slice(0, 12);
+
+/** Pick 12 stories for one game: 11 random normal ones in random order, then one random finale. */
+export function pickEvents(rng) {
+  const shuffle = (a) => { const x = [...a]; for (let i = x.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [x[i], x[j]] = [x[j], x[i]]; } return x; };
+  const normals = shuffle(EVENT_POOL.filter((e) => !FINALE_KEYS.includes(e.key))).slice(0, 11);
+  const finale = shuffle(EVENT_POOL.filter((e) => FINALE_KEYS.includes(e.key)))[0];
+  return [...normals, finale].map((e, i) => ({ ...e, round: i + 1 }));
+}
 
 // Opening scenario: a PUBLIC pre-game "rule" showing how stocks behaved before round 1,
 // so the game starts from already-moved prices. Fictional practice story; reactions are simulated.
