@@ -1,6 +1,6 @@
 # ElvaStocks
 
-A real-time multiplayer stock market game. Up to 6 players trade virtual euros in 21 companies on their phones; the host runs the game from a desktop control centre. News drives a simulated market, profits are taxed, power-ups unlock after round 6, and the highest wealth after 12 rounds wins.
+A real-time multiplayer stock market game. Up to 8 players trade virtual euros in 24 companies on their phones; the host runs the game from a desktop control centre. News drives a simulated market, profits are taxed, power-ups unlock after round 6, and the highest wealth after 12 rounds wins.
 
 Independent game: no accounts, no GeoGuessr or other dependencies.
 

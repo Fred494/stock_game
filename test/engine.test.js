@@ -32,9 +32,9 @@ test('names unique, validated, no impersonation', () => {
   assert.equal(G.findPlayerByToken(game, 'forged'), undefined);
 });
 
-test('room holds max 6 players', () => {
-  const { game } = lobby(6);
-  assert.throws(() => G.addPlayer(game, { name: 'Seventh' }), /cheia/);
+test('room holds max 8 players', () => {
+  const { game } = lobby(8);
+  assert.throws(() => G.addPlayer(game, { name: 'Ninth' }), /cheia/);
 });
 
 test('host-assigned budgets validated and locked', () => {

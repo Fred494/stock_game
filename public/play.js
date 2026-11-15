@@ -105,7 +105,7 @@ function introView() {
 
 function lobbyView() {
   return `<div class="hero"><h1>Estás dentro!</h1><p class="muted">Sala <b>${esc(S.code)}</b> · à espera que o anfitrião defina os orçamentos e comece o jogo.</p></div>
-  <div class="card"><h3>Jogadores (${S.players.length}/6)</h3>${S.players.map((p) => `<div class="lb"><span class="avatar" style="background:${esc(p.avatar)}">${esc(p.name[0].toUpperCase())}</span><b>${esc(p.name)}</b>${p.id === S.me.id ? '<span class="chip">Tu</span>' : ''}</div>`).join('')}</div>
+  <div class="card"><h3>Jogadores (${S.players.length}/8)</h3>${S.players.map((p) => `<div class="lb"><span class="avatar" style="background:${esc(p.avatar)}">${esc(p.name[0].toUpperCase())}</span><b>${esc(p.name)}</b>${p.id === S.me.id ? '<span class="chip">Tu</span>' : ''}</div>`).join('')}</div>
   <div class="card" style="margin-top:12px"><h3>Como funciona</h3><p class="muted">Em cada ronda: lê a notícia, negoceia e vê o mercado reagir. O anfitrião inicia cada fase. Os preços ficam parados enquanto negoceias. Os lucros pagam imposto quando vendes: 28%, ou 20% se mantiveres 4 ou mais rondas. Ganha quem tiver mais riqueza depois da ronda 12.</p></div>`;
 }
 
@@ -223,7 +223,7 @@ function tradeView() {
 // ---------- final results
 function finalView() {
   const R = S.results, me = R.players.find((p) => p.id === S.me.id), c = R.champion;
-  const colors = ['#2BD99F', '#4F8EFF', '#F5C56B', '#F26B78', '#A78BFA', '#38BDF8'];
+  const colors = ['#2BD99F', '#4F8EFF', '#F5C56B', '#F26B78', '#A78BFA', '#38BDF8', '#FB923C', '#F472B6'];
   const byId = Object.fromEntries(S.stocks.map((s) => [s.id, s]));
   const pu = (p) => (p.powerup ? `${POWERUP_INFO[p.powerup.type].icon} ${POWERUP_INFO[p.powerup.type].name}${p.powerup.result ? ' · pagou ' + eur0(p.powerup.result.payout ?? 0) + (p.powerup.result.direction ? ' (' + (DIR_PT[p.powerup.result.direction] || p.powerup.result.direction) + ')' : '') : ' · por usar'}` : 'Sem power-up');
   return `<div class="stack">
@@ -236,7 +236,7 @@ function finalView() {
       <div class="kv"><span>Imposto reduzido de 20%</span><b>${me.patience.reducedRateSales ? `usado ${me.patience.reducedRateSales}×, poupaste ${eur0(me.patience.taxSaved)}` : 'não usado'}</b></div></div>
     <div class="card"><h3>Classificação</h3>${R.players.map((p) => `<details class="lb" style="display:block"><summary class="row"><span class="rk">${p.rank}</span><span class="avatar" style="background:${esc(p.avatar)}">${esc(p.name[0].toUpperCase())}</span><b class="grow">${esc(p.name)}</b><span class="num">${eur0(p.wealth)}</span></summary>
       <div style="padding:8px 0 4px 32px;font-size:13px" class="muted">${esc(p.profile.name)} · ${pct(p.ret, 1)} · imposto ${eur0(p.tax)}<br>${pu(p)}<br>${p.holdings.length ? 'Tem: ' + p.holdings.map((h) => esc(byId[h.id].ticker) + ' ' + eur0(h.value)).join(', ') : 'Só tem dinheiro'}</div></details>`).join('')}</div>
-    <div class="card"><h3>Riqueza por ronda</h3>${lineChart(R.players.map((p, i) => ({ name: p.name, color: colors[i % 6], points: p.history })), { w: 420, h: 240 })}</div>
+    <div class="card"><h3>Riqueza por ronda</h3>${lineChart(R.players.map((p, i) => ({ name: p.name, color: colors[i % 8], points: p.history })), { w: 420, h: 240 })}</div>
     <div class="card"><h3>O que mexeu com o mercado</h3>${R.events.map((e) => `<div class="move"><b style="width:26px">${e.round}</b><div class="grow"><b>${esc(e.title)}</b>${e.reversed ? '' : ''}<div class="muted" style="font-size:13px">${e.top.map((m) => `${esc(byId[m.id].ticker)} <span class="${cls(m.pct)}">${pct(m.pct, 1)}</span>`).join(' · ')}</div><div class="muted" style="font-size:12px">${esc(e.teaches)}</div></div></div>`).join('')}</div>
     <p class="muted" style="font-size:12px">${esc(R.tiebreak)} Mercado simulado (semente ${esc(R.seed)}); as regras de imposto são mecânicas do jogo, não aconselhamento fiscal.</p>
     ${S.nextCode ? `<button class="btn green" data-act="again">Entrar no próximo jogo (${esc(S.nextCode)})</button>` : `<p class="muted" style="text-align:center">Pede ao anfitrião para carregar em “Jogar outra vez”.</p>`}

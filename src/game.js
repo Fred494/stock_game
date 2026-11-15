@@ -72,7 +72,7 @@ export function addPlayer(game, { name, avatar, token: existing }) {
   if (game.status !== 'lobby') fail('started', 'Este jogo já começou.');
   const n = cleanName(name);
   if (n.length < 1) fail('bad_name', 'Escreve um nome.');
-  if (game.players.length >= MAX_PLAYERS) fail('full', 'Esta sala está cheia (6 jogadores).');
+  if (game.players.length >= MAX_PLAYERS) fail('full', 'Esta sala está cheia (8 jogadores).');
   if (game.players.some((p) => p.name.toLowerCase() === n.toLowerCase())) fail('name_taken', 'Esse nome já está a ser usado nesta sala.');
   const t = token();
   const color = AVATARS.includes(avatar) ? avatar : AVATARS[game.players.length % AVATARS.length];

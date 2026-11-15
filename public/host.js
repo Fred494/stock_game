@@ -7,7 +7,7 @@ let S = null, sig = '', clockAt = 0;
 let presets = [110000, 108000, 106000, 104000, 102000, 100000];
 let pres = false, quick = false;
 const app = $('#app');
-const colors = ['#2BD99F', '#4F8EFF', '#F5C56B', '#F26B78', '#A78BFA', '#38BDF8'];
+const colors = ['#2BD99F', '#4F8EFF', '#F5C56B', '#F26B78', '#A78BFA', '#38BDF8', '#FB923C', '#F472B6'];
 const joinUrl = () => `${location.origin}${location.pathname.replace(/host\.html$/, '')}play.html?code=${host.code}`;
 
 api('/api/config').then((c) => { presets = c.presets; }).catch(() => {});
@@ -110,7 +110,7 @@ function gameView() {
       <table><tr><th></th><th>Stock</th><th class="r">Price</th><th class="r">Move</th></tr>
       ${(mv ? [...mv.moves].sort((a, b) => b.pct - a.pct) : S.stocks.map((s) => ({ id: s.id, price: s.price, pct: 0 }))).map((m) => `<tr data-act="stock" data-id="${esc(m.id)}" style="cursor:pointer${selStock === m.id ? ';background:var(--bg3)' : ''}"><td>${logo(byId[m.id], 26)}</td><td>${esc(byId[m.id].name)} <span class="muted">${esc(byId[m.id].ticker)}</span></td><td class="r num">${eur(m.price)}</td><td class="r num ${cls(m.pct)}">${mv ? pct(m.pct) : '—'}</td></tr>`).join('')}</table></div>
   </div>
-  <div class="card nopres" style="margin-top:16px"><h2 style="font-size:20px">Wealth by round</h2>${lineChart(S.leaderboard.map((l, i) => ({ name: l.name, color: colors[i % 6], points: S.history[l.id] || [] })), { w: 900, h: 260 })}</div>`;
+  <div class="card nopres" style="margin-top:16px"><h2 style="font-size:20px">Wealth by round</h2>${lineChart(S.leaderboard.map((l, i) => ({ name: l.name, color: colors[i % 8], points: S.history[l.id] || [] })), { w: 900, h: 260 })}</div>`;
 }
 
 function finalView() {
@@ -119,7 +119,7 @@ function finalView() {
   <div class="grid" style="margin-top:16px"><div class="card"><h2 style="font-size:20px">Final leaderboard</h2><table><tr><th>#</th><th>Player</th><th class="r">Wealth</th><th class="r">Return</th><th class="r">Tax</th><th>Profile</th><th>Best / worst</th></tr>
     ${R.players.map((p) => `<tr><td>${p.rank}</td><td><b>${esc(p.name)}</b></td><td class="r num">${eur0(p.wealth)}</td><td class="r num ${cls(p.ret)}">${pct(p.ret, 1)}</td><td class="r num">${eur0(p.tax)}</td><td>${esc(p.profile.name)}</td><td class="muted">${p.best ? esc(p.best.name) : '—'} / ${p.worst ? esc(p.worst.name) : '—'}</td></tr>`).join('')}</table>
     <p class="muted" style="font-size:12px">${esc(R.tiebreak)}</p></div>
-  <div class="card"><h2 style="font-size:20px">Wealth by round</h2>${lineChart(R.players.map((p, i) => ({ name: p.name, color: colors[i % 6], points: p.history })), { w: 600, h: 280 })}</div></div>
+  <div class="card"><h2 style="font-size:20px">Wealth by round</h2>${lineChart(R.players.map((p, i) => ({ name: p.name, color: colors[i % 8], points: p.history })), { w: 600, h: 280 })}</div></div>
   <div class="card" style="margin-top:16px"><h2 style="font-size:20px">What moved the market</h2>${R.events.map((e) => `<p><b>R${e.round} ${esc(e.title)}</b>${e.reversed ? ' (priced-in reversal)' : ''} <span class="muted">${esc(e.teaches)}</span></p>`).join('')}</div>
   <div class="ctl" style="margin-top:16px"><button class="btn green" data-act="again">▶ Play again (new room, same players)</button><a class="btn ghost" href="index.html" style="text-decoration:none;display:inline-grid;place-items:center">About the game</a></div>`;
 }

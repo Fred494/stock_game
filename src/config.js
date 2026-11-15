@@ -8,7 +8,7 @@ export const NEWS_PROVIDER = process.env.NEWS_PROVIDER || 'demo';
 export const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 
 export const TOTAL_ROUNDS = 12;
-export const MAX_PLAYERS = 6;
+export const MAX_PLAYERS = 8;
 export const SHOP_AFTER_ROUND = 6;
 export const POWERUP_COST = 800000; // cents (EUR 8,000)
 export const CONNECTED_WINDOW_MS = 12000;
