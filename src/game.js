@@ -6,6 +6,7 @@ import {
 import { STOCKS, STOCK_BY_ID, FX_SNAPSHOT } from './stocks.js';
 import { EVENTS, OPENING } from './events.js';
 const evOf = (game, r) => (game.market.events || EVENTS)[r - 1];
+import { QUIZ } from './quiz.js';
 import { buildMarket, roundReturn, direction } from './market.js';
 import { MICRO, valueCents, toCents } from './money.js';
 import { quoteBuy, quoteSell, applyBuy, applySell, positionQty, wealth, taxRate, REDUCED_RATE, STANDARD_RATE } from './trading.js';
@@ -366,7 +367,7 @@ function newsView(game, round) {
   const real = game.news[round - 1].real;
   return {
     round, title: ev.title, headline: ev.headline, summary: ev.summary, teaches: ev.teaches,
-    relevant: ev.relevant, extras: ev.extras || [],
+    extras: ev.extras || [],
     scenario: { fictional: true, note: 'Cenário do jogo: uma história fictícia de prática. As reações das ações são simuladas.' },
     real, // real-world article (headline, publisher, date, url) or null
   };
@@ -376,15 +377,14 @@ function stocksView(game, p) {
   const r = game.settledThrough;
   const cur = game.market.path[r];
   const prev = r > 0 ? game.market.path[r - 1] : cur;
-  const rel = game.round >= 1 && game.round <= TOTAL_ROUNDS && game.phase !== 'finished' && !['reaction', 'shop'].includes(game.phase)
-    ? new Set(evOf(game, game.round).relevant) : new Set();
   const preludeFrom = Object.fromEntries((game.market.prelude || []).map((m) => [m.id, m.from]));
   const preludeById = Object.fromEntries((game.market.prelude || []).map((m) => [m.id, m.pct]));
   return STOCKS.map((s) => {
     const q = p ? positionQty(p, s.id) : 0;
     return {
       ...publicMeta(s), price: cur[s.id], change: r > 0 ? cur[s.id] / prev[s.id] - 1 : (preludeById[s.id] ?? 0),
-      owned: q, ownedValue: valueCents(q, cur[s.id]), relevant: rel.has(s.id),
+      owned: q, ownedValue: valueCents(q, cur[s.id]),
+      lots: p ? (p.holdings[s.id]?.lots || []).map((l) => ({ round: l.round, price: l.price ?? Math.round((l.cost * MICRO) / l.qty), qty: l.qty, cost: l.cost })) : [],
       history: [preludeFrom[s.id] ?? game.market.path[0][s.id], ...game.market.path.slice(0, r + 1).map((pp) => pp[s.id])],
     };
   });
@@ -417,6 +417,35 @@ function leaderboard(game) {
   }));
 }
 
+// ---------------------------------------------------------------- quiz (rounds 3 and 9)
+const quizOf = (game) => (game.status === 'running' ? (game.market.quiz || []).find((x) => x.round === game.round) : null);
+
+export function answerQuiz(game, p, { choice }) {
+  const qz = quizOf(game);
+  if (!qz) fail('no_quiz', 'Não há pergunta nesta ronda.');
+  p.quiz ||= {};
+  if (p.quiz[qz.round] != null) fail('answered', 'Já respondeste a esta pergunta.');
+  const c = Number(choice);
+  if (!Number.isInteger(c) || c < 0 || c >= qz.options.length) fail('bad_choice', 'Escolha inválida.');
+  p.quiz[qz.round] = c;
+  return { correct: c === qz.answer };
+}
+
+function quizView(game, p) {
+  const qz = quizOf(game);
+  if (!qz || (game.round === 1 && !game.introDone)) return null;
+  const q = QUIZ[qz.q];
+  const mine = p?.quiz?.[qz.round];
+  const done = mine != null;
+  return { round: qz.round, question: q.question, options: qz.options, answered: done ? mine : null, ...(done ? { correct: qz.answer, why: q.why } : {}) };
+}
+
+function quizScore(game, p) {
+  const list = game.market.quiz || [];
+  const rounds = list.filter((x) => x.round <= (game.status === 'finished' ? 99 : game.round));
+  return { correct: rounds.filter((x) => p.quiz?.[x.round] === x.answer).length, total: list.length };
+}
+
 export function playerView(game, p) {
   p.lastSeen = Date.now();
   const prices = pricesNow(game);
@@ -434,12 +463,14 @@ export function playerView(game, p) {
       id: p.id, name: p.name, avatar: p.avatar, cash: p.cash, wealth: wealth(p, prices), ready: p.ready,
       taxPaid: p.taxPaid, start: p.startCash, rank: myRank, powerup: pu,
       holdings: Object.keys(p.holdings).map((id) => ({ id, qty: positionQty(p, id), cost: p.holdings[id].lots.reduce((a, l) => a + l.cost, 0) })),
+      quizScore: quizScore(game, p),
     },
     stocks: stocksView(game, p),
     players: game.players.map((x) => ({ id: x.id, name: x.name, avatar: x.avatar })),
     leaderboard: game.status === 'lobby' ? [] : leaderboard(game).map(({ id, name, avatar, wealth: w, ret, rank }) => ({ id, name, avatar, wealth: w, ret, rank })),
     lastSettlement: lastSettlement(game),
     myPayout: game.settlements[game.settledThrough]?.payouts?.[p.id] ?? null,
+    quiz: quizView(game, p),
     myRound: game.settlements[game.settledThrough]?.pnl?.[p.id] ?? null,
   };
   if (game.round >= 1 && game.status !== 'finished') v.news = newsView(game, game.round);
@@ -461,6 +492,7 @@ export function hostView(game) {
     lastSettlement: lastSettlement(game),
     history: game.history,
     maxPlayers: MAX_PLAYERS,
+    quiz: (() => { const qz = quizOf(game); return qz ? { round: qz.round, question: QUIZ[qz.q].question, answered: game.players.filter((x) => x.quiz?.[qz.round] != null).length, total: game.players.length } : null; })(),
   };
   if (game.round >= 1 && game.status !== 'finished') v.news = newsView(game, game.round);
   if (game.status === 'finished') v.results = results(game);
@@ -510,6 +542,7 @@ export function results(game) {
     const soldReduced = p.trades.filter((t) => t.side === 'sell').flatMap((t) => t.lots || []).filter((l) => l.rate === REDUCED_RATE && l.gain > 0);
     const taxSaved = soldReduced.reduce((a, l) => a + Math.round(l.gain * (STANDARD_RATE - REDUCED_RATE)), 0);
     return {
+      quiz: quizScore(game, p),
       id: p.id, name: p.name, avatar: p.avatar, rank: r.rank, wealth: r.wealth, start: p.startCash, gain: r.wealth - p.startCash,
       ret: r.ret, cash: p.cash, tax: p.taxPaid, history: game.history[p.id] || [],
       powerup: p.powerup ? { type: p.powerup.type, status: p.powerup.status, result: p.powerup.result, expired: !!p.powerup.expired } : null,
@@ -540,6 +573,6 @@ export function resetGame(game) {
     startedAt: null, introDone: false, market: buildMarket(crypto.randomInt(1, 2 ** 31)), updatedAt: Date.now(),
   });
   for (const p of game.players) {
-    Object.assign(p, { startCash: null, cash: 0, holdings: {}, trades: [], taxPaid: 0, ready: false, powerup: null, requestIds: [] });
+    Object.assign(p, { startCash: null, cash: 0, holdings: {}, trades: [], taxPaid: 0, ready: false, powerup: null, requestIds: [], quiz: {} });
   }
 }

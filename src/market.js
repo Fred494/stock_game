@@ -1,5 +1,6 @@
 import { STOCKS } from './stocks.js';
 import { OPENING, pickEvents } from './events.js';
+import { pickQuiz } from './quiz.js';
 
 export function mulberry32(a) {
   return function () {
@@ -59,7 +60,8 @@ export function buildMarket(seed) {
     path.push(next);
     rounds.push({ round: r, reversed: false, intensity: 1, marketPct: 0, detail });
   }
-  return { seed, path, rounds, prelude, events };
+  const quiz = pickQuiz(mulberry32(((seed >>> 0) ^ 0x5bd1e995) >>> 0)); // separate rng: does not change prices
+  return { seed, path, rounds, prelude, events, quiz };
 }
 
 export const roundReturn = (market, r, id) => market.path[r][id] / market.path[r - 1][id] - 1;

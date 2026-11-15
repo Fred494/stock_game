@@ -142,6 +142,7 @@ async function api(req, res, url) {
       switch (b.action) {
         case 'quote': out = { quote: G.quote(game, p, b) }; delete out.quote.stock; break;
         case 'trade': out = G.trade(game, p, b); break;
+        case 'answerQuiz': out = G.answerQuiz(game, p, b); break;
         case 'ready': G.setReady(game, p, true); break;
         case 'unready': G.setReady(game, p, false); break;
         case 'buyPowerup': G.purchasePowerup(game, p, b.type); break;

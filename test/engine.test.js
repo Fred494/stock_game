@@ -390,3 +390,34 @@ test('untimed game: nothing advances by itself, host starts each phase, quick in
   assert.equal(game.phase, 'reaction');
   assert.equal(G.hostView(game).remainingMs, 0);
 });
+
+test('event pool: 100+ extra stories, unique keys, 11 distinct normals + 1 finale per game', async () => {
+  const { EVENT_POOL, pickEvents, FINALE_KEYS } = await import('../src/events.js');
+  assert.ok(EVENT_POOL.length >= 122);
+  assert.equal(new Set(EVENT_POOL.map((e) => e.key)).size, EVENT_POOL.length);
+  const evs = pickEvents(() => Math.random());
+  assert.equal(new Set(evs.map((e) => e.key)).size, 12);
+  assert.ok(FINALE_KEYS.includes(evs[11].key));
+});
+
+test('quiz: asked in rounds 3 and 9, answer once, correct answer hidden until answered', () => {
+  const { game } = G.createGame({ code: 'QZ', seed: 11 });
+  const { player } = G.addPlayer(game, { name: 'Q' });
+  G.setBudget(game, player.id, 100_000);
+  G.startGame(game); G.endIntro(game);
+  assert.equal(G.playerView(game, player).quiz, null);
+  game.round = 3; game.phase = 'news';
+  const v = G.playerView(game, player).quiz;
+  assert.equal(v.options.length, 4);
+  assert.equal(v.correct, undefined);
+  assert.equal(G.hostView(game).quiz.answered, 0);
+  const right = game.market.quiz.find((x) => x.round === 3).answer;
+  assert.equal(G.answerQuiz(game, player, { choice: right }).correct, true);
+  assert.throws(() => G.answerQuiz(game, player, { choice: 0 }), /Já respondeste/);
+  const v2 = G.playerView(game, player).quiz;
+  assert.equal(v2.correct, right);
+  assert.ok(v2.why);
+  assert.equal(G.playerView(game, player).me.quizScore.correct, 1);
+  game.round = 4;
+  assert.equal(G.playerView(game, player).quiz, null);
+});

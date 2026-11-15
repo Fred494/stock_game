@@ -7,7 +7,9 @@ const mk = (round, key, title, headline, extras, teaches, query, moves, roles) =
   return { round, key, title, headline, summary: extras.join(' · '), extras, teaches, relevant: Object.keys(moves), bias: 0, query, moves, sens, roles };
 };
 
-export const EVENT_POOL = [
+import { EXTRA_EVENTS } from './events_extra.js';
+
+const BASE_EVENTS = [
   mk(1, 'pandemic', 'Nova pandemia', '🦠 Nova pandemia: o mundo volta a ficar fechado em casa',
     ['📦 Amazon contrata 100 mil pessoas para entregas', '🧻 Corrida ao papel higiénico nos supermercados'],
     'Choques que obrigam as pessoas a ficar em casa: quem vive do digital ganha, quem vive de viagens e petróleo perde.', 'pandemic lockdown stocks',
@@ -120,7 +122,8 @@ export const EVENT_POOL = [
     { AMZN: 'Cresce com a compra da maior retalhista.', WMT: 'Deixa de existir como empresa independente.', COST: 'Passa a ter um concorrente gigante.', NFLX: 'Promoção atrai novos clientes.', V: 'Mais pagamentos a processar.', MA: 'Mais pagamentos a processar.' }),
 ];
 
-export const FINALE_KEYS = ['blackout', 'mega-merger'];
+export const EVENT_POOL = [...BASE_EVENTS, ...EXTRA_EVENTS];
+export const FINALE_KEYS = ['blackout', 'mega-merger', ...EXTRA_EVENTS.filter((e) => e.finale).map((e) => e.key)];
 /** The original 12 stories, in their original order (fallback for old saved games and tests). */
 export const EVENTS = EVENT_POOL.slice(0, 12);
 

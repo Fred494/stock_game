@@ -102,10 +102,10 @@ export function fmtClock(ms) {
 export const PHASE_LABEL = { lobby: 'Sala', news: 'Notícias', trading: 'Negociação', reaction: 'Reação do mercado', shop: 'Loja de Power-Ups', finished: 'Resultados finais' };
 
 /** Simple price-history line chart for ONE stock. points = prices in cents, index 0 = opening price. */
-export function priceChart(points, { w = 480, h = 190, color } = {}) {
+export function priceChart(points, { w = 480, h = 190, color, marks = [], avg = null } = {}) {
   const pts = points.filter((v) => v != null);
   if (pts.length < 2) return '<p class="muted" style="text-align:center;margin:8px 0">Ainda sem histórico.</p>';
-  let lo = Math.min(...pts), hi = Math.max(...pts);
+  let lo = Math.min(...pts, ...marks.map((m) => m.price), ...(avg ? [avg] : [])), hi = Math.max(...pts, ...marks.map((m) => m.price), ...(avg ? [avg] : []));
   const padv = (hi - lo) * 0.1 || hi * 0.02 || 1;
   lo -= padv; hi += padv;
   const pad = { l: 50, r: 10, t: 10, b: 22 };
@@ -121,5 +121,7 @@ export function priceChart(points, { w = 480, h = 190, color } = {}) {
   pts.forEach((_, i) => { g += `<text x="${x(i)}" y="${h - 6}" fill="#8FA3BE" font-size="10" text-anchor="middle">${i === 0 ? 'Antes' : i === 1 ? 'Início' : 'R' + (i - 1)}</text>`; });
   const line = pts.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
   const dots = pts.map((v, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.5" fill="${col}"/>`).join('');
-  return `<svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="Evolução do preço">${g}<polyline fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round" points="${line}"/>${dots}</svg>`;
+  const avgLine = avg ? `<line x1="${pad.l}" x2="${w - pad.r}" y1="${y(avg)}" y2="${y(avg)}" stroke="#F5C56B" stroke-width="1.5" stroke-dasharray="5 4"/><text x="${w - pad.r}" y="${y(avg) - 4}" fill="#F5C56B" font-size="10" text-anchor="end">média ${(avg / 100).toFixed(2)}</text>` : '';
+  const mk = marks.filter((m) => m.i >= 0 && m.i < pts.length).map((m) => { const cx = x(m.i), cy = y(m.price); const left = cx > w * 0.7; return `<line x1="${cx.toFixed(1)}" x2="${cx.toFixed(1)}" y1="${pad.t}" y2="${h - pad.b}" stroke="#F5C56B" stroke-opacity=".45" stroke-dasharray="3 3"/><circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="6.5" fill="#F5C56B" stroke="#0b1522" stroke-width="2"/><text x="${(left ? cx - 10 : cx + 10).toFixed(1)}" y="${(cy - 9).toFixed(1)}" fill="#F5C56B" font-size="11" font-weight="700" text-anchor="${left ? 'end' : 'start'}">${m.label}</text>`; }).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" role="img" aria-label="Evolução do preço">${g}${avgLine}<polyline fill="none" stroke="${col}" stroke-width="2.5" stroke-linejoin="round" points="${line}"/>${dots}${mk}</svg>`;
 }

@@ -121,12 +121,48 @@ function openingCard() {
 }
 function newsCard() {
   const n = S.news; if (!n) return '';
-  const full = S.phase === 'news';
+  const full = S.phase === 'news' || S.phase === 'trading';
   const real = n.real ? `<div class="card" style="margin-top:10px;background:var(--bg)"><span class="tag">NOTÍCIA REAL</span><p style="margin:6px 0 2px"><b>${esc(n.real.headline)}</b></p><span class="muted" style="font-size:12px">${esc(n.real.publisher)} · ${n.real.publishedAt ? esc(new Date(n.real.publishedAt).toLocaleDateString()) : ''} · <a href="${esc(n.real.url)}" target="_blank" rel="noopener noreferrer">fonte</a></span></div>` : '';
   return `<div class="card news pop"><span class="tag fict">CENÁRIO DE PRÁTICA · FICTÍCIO</span> <span class="tag">Ronda ${n.round}</span>
     <h3>${esc(n.headline)}</h3>
-    ${full ? `<p>${(n.extras && n.extras.length ? n.extras : [n.summary]).map((x) => esc(x)).join("<br>")}</p><p class="muted" style="font-size:13px">Aprende: ${esc(n.teaches)}</p><p class="muted" style="font-size:13px">Ações em destaque: ${n.relevant.slice(0, 8).map((id) => esc(id)).join(', ')}${n.relevant.length > 8 ? '…' : ''}</p>${real}`
+    ${full ? `<ul class="newsl">${(n.extras && n.extras.length ? n.extras : [n.summary]).map((x) => `<li>${esc(x)}</li>`).join('')}</ul><p class="muted" style="font-size:14px;margin:8px 0 0">💡 <b>Aprende:</b> ${esc(n.teaches)}</p>${real}`
       : `<p class="muted" style="font-size:13px;margin:0">${esc(n.title)}</p>`}</div>`;
+}
+
+// ---------- quiz (rounds 3 and 9)
+function quizCard() {
+  const z = S.quiz; if (!z) return '';
+  const done = z.answered != null;
+  const right = done && z.answered === z.correct;
+  return `<div class="card pop quiz"><span class="tag">🎓 PERGUNTA DA RONDA ${z.round}</span><h3 style="margin:8px 0 10px">${esc(z.question)}</h3>
+    ${z.options.map((o, i) => `<button class="qopt ${done ? (i === z.correct ? 'ok' : i === z.answered ? 'bad' : 'dim') : ''}" data-act="quiz" data-v="${i}" ${done ? 'disabled' : ''}><b>${'ABCD'[i]}</b><span>${esc(o)}</span></button>`).join('')}
+    ${done ? `<div class="qres ${right ? 'ok' : 'bad'}"><b>${right ? '✅ Certo!' : '❌ Não foi desta.'}</b> ${esc(z.why)}</div>` : '<p class="muted" style="font-size:12px;margin:8px 0 0">Só podes responder uma vez. Não afeta o teu dinheiro: é para aprenderes.</p>'}</div>`;
+}
+
+// ---------- my portfolio
+function holdInfo(s) {
+  const cost = (s.lots || []).reduce((a, l) => a + l.cost, 0);
+  const pnl = s.ownedValue - cost;
+  return { cost, value: s.ownedValue, pnl, ret: cost > 0 ? pnl / cost : 0 };
+}
+function portfolio() {
+  const rows = S.stocks.filter((s) => s.owned > 0).map((s) => ({ s, ...holdInfo(s) }));
+  const invested = rows.reduce((a, r) => a + r.value, 0);
+  const cost = rows.reduce((a, r) => a + r.cost, 0);
+  rows.forEach((r) => { r.share = invested > 0 ? r.value / invested : 0; });
+  rows.sort((a, b) => b.value - a.value);
+  return { rows, invested, cost, pnl: invested - cost, ret: cost > 0 ? (invested - cost) / cost : 0 };
+}
+const PAL = ['#4F8EFF', '#2BD99F', '#F5C56B', '#F26B78', '#A78BFA', '#38BDF8', '#FB923C', '#F472B6', '#34D399', '#FBBF24'];
+function portfolioCard() {
+  const P = portfolio();
+  if (!P.rows.length) return '<div class="card"><p class="muted" style="margin:0">Ainda não tens ações. Toca numa empresa para comprar.</p></div>';
+  const wealth = S.me.wealth || 1;
+  return `<div class="card"><h3 style="margin:0 0 8px">A tua carteira</h3>
+    <div class="kv"><span>Investido em ações</span><b class="num">${eur(P.invested)} <span class="muted">(${Math.round((100 * P.invested) / wealth)}% da riqueza)</span></b></div>
+    <div class="kv"><span>Ganho / perda desde a compra</span><b class="num ${cls(P.pnl)}">${eur(P.pnl)} · ${pct(P.ret, 1)}</b></div>
+    <div class="alloc">${P.rows.map((r, i) => `<i style="width:${(100 * r.share).toFixed(1)}%;background:${PAL[i % PAL.length]}"></i>`).join('')}</div>
+    ${P.rows.map((r, i) => `<div class="kv"><span><i class="dot" style="background:${PAL[i % PAL.length]}"></i>${esc(r.s.name)}</span><b class="num">${Math.round(100 * r.share)}% <span class="${cls(r.ret)}" style="font-size:13px">${pct(r.ret, 1)}</span></b></div>`).join('')}</div>`;
 }
 
 function reactionCard() {
@@ -175,20 +211,21 @@ function stocksView() {
   let list = S.stocks.slice();
   const q = ui.q.trim().toLowerCase();
   if (q) list = list.filter((s) => s.name.toLowerCase().includes(q) || s.ticker.toLowerCase().includes(q));
-  if (ui.filter === 'news') list = list.filter((s) => s.relevant);
-  if (ui.filter === 'mine') list = list.filter((s) => s.owned > 0);
-  list.sort((a, b) => (b.relevant - a.relevant) || 0); // news-affected first, otherwise keep list order
+  const mineOnly = ui.filter === 'mine';
+  if (mineOnly) list = list.filter((s) => s.owned > 0).sort((a, b) => b.ownedValue - a.ownedValue);
+  const P = portfolio();
+  const shareOf = Object.fromEntries(P.rows.map((r) => [r.s.id, r.share]));
   const canTrade = S.phase === 'trading';
   const dock = S.phase === 'trading'
     ? `<div class="dock">${S.me.ready ? `<button class="btn ghost" data-act="unready">✓ Pronto · Editar as minhas operações</button>` : `<button class="btn green" data-act="ready">Estou pronto</button>`}${S.countdownMs != null ? `<div class="cd" style="margin-top:8px">Todos prontos: a negociação fecha em ${Math.ceil(S.countdownMs / 1000)} s</div>` : ''}</div>` : '';
   return `<div class="stack">
-    ${openingCard()}${newsCard()}${powerupCard()}${reactionCard()}
-    ${S.phase === 'trading' && !S.me.ready ? '' : ''}
+    ${quizCard()}${openingCard()}${newsCard()}${powerupCard()}${reactionCard()}
     <input id="search" type="search" placeholder="Procurar empresas" value="${esc(ui.q)}" aria-label="Procurar ações">
-    <div class="chips">${[['all', 'Todas'], ['news', 'Afetadas pela notícia'], ['mine', 'As minhas']].map(([k, l]) => `<button class="fchip ${ui.filter === k ? 'on' : ''}" data-act="filter" data-v="${k}">${l}</button>`).join('')}</div>
-    ${list.map((s) => `<button class="stock ${s.relevant ? 'rel' : ''}" data-act="open" data-id="${esc(s.id)}" ${''}>
-      ${logo(s)}<div class="grow"><div class="nm">${esc(s.name)}${s.owned > 0 ? `<span class="own">${qtyFmt(s.owned)}</span>` : ''}</div><div class="sub">${esc(s.ticker)}<span class="vol ${s.vol}">${({ low: 'BAIXA', medium: 'MÉDIA', high: 'ALTA' })[s.vol]}</span></div></div>
-      <div class="px"><div class="num">${eur(s.price)}</div><div class="num ${cls(s.change)}" style="font-size:13px">${S.settled ? pct(s.change) : '—'}</div></div></button>`).join('') || '<p class="muted">Nenhuma ação encontrada.</p>'}
+    <div class="chips">${[['all', 'Todas'], ['mine', `As minhas (${P.rows.length})`]].map(([k, l]) => `<button class="fchip ${ui.filter === k ? 'on' : ''}" data-act="filter" data-v="${k}">${l}</button>`).join('')}</div>
+    ${mineOnly ? portfolioCard() : ''}
+    ${list.map((s) => { const h = s.owned > 0 ? holdInfo(s) : null; return `<button class="stock" data-act="open" data-id="${esc(s.id)}">
+      ${logo(s)}<div class="grow"><div class="nm">${esc(s.name)}${s.owned > 0 ? `<span class="own">${qtyFmt(s.owned)}</span>` : ''}</div><div class="sub">${esc(s.ticker)}<span class="vol ${s.vol}">${({ low: 'BAIXA', medium: 'MÉDIA', high: 'ALTA' })[s.vol]}</span>${h ? ` · <b>${Math.round(100 * (shareOf[s.id] || 0))}%</b> da carteira · <b class="${cls(h.ret)}">${pct(h.ret, 1)}</b>` : ''}</div></div>
+      <div class="px"><div class="num">${eur(s.price)}</div><div class="num ${cls(s.change)}" style="font-size:13px">${S.settled ? pct(s.change) : '—'}</div></div></button>`; }).join('') || `<p class="muted">${mineOnly ? 'Ainda não tens ações.' : 'Nenhuma ação encontrada.'}</p>`}
     <p class="muted" style="font-size:11px;text-align:center">Os preços são valores simulados em euros virtuais (dados de demonstração). Os logótipos pertencem aos seus donos.</p>
   </div>${dock}${canTrade ? '' : ''}`;
 }
@@ -202,22 +239,33 @@ function tradeView() {
   const quickBuy = [500, 1000, 5000, 10000].map((e) => `<button data-act="quick" data-v="${e}">€${e.toLocaleString('en-IE')}</button>`).join('') + `<button data-act="quickmax">Máx</button>`;
   const quickSell = [25, 50, 75].map((p) => `<button data-act="quickpct" data-v="${p}">${p}%</button>`).join('') + `<button data-act="quickmax">Tudo</button>`;
   const q = ui.quote;
+  const h = s.owned > 0 ? holdInfo(s) : null;
+  const lots = s.lots || [];
+  const marks = Object.values(lots.reduce((m, l) => { (m[l.round] ||= { i: l.round, price: l.price, label: `Compra R${l.round} · ${(l.price / 100).toFixed(2)}€` }); return m; }, {}));
+  const avg = lots.length ? Math.round(lots.reduce((a, l) => a + l.cost, 0) * 1e6 / lots.reduce((a, l) => a + l.qty, 0)) : null;
+  const rateInfo = (l) => { const age = S.round - l.round; return age >= 4 ? '<b class="up">20% (já reduzido)</b>' : `28% · passa a 20% na ronda ${l.round + 4}`; };
   let detail = '';
   if (buy) {
     if (amtC > 0) detail = `Vais comprar ≈ <b class="num">${qtyFmt(Math.floor((amtC * 1e6) / s.price))}</b> ações · ficas com <b class="num">${eur(S.me.cash - amtC)}</b>`;
   } else if (q && q.ok) {
-    detail = `Recebes <b class="num up">${eur(q.net)}</b> (imposto ${eur(q.tax)})`;
+    const rates = [...new Set(q.lots.filter((l) => l.gain > 0).map((l) => Math.round(l.rate * 100)))];
+    detail = `<div class="taxbox"><div class="kv"><span>Valor da venda</span><b class="num">${eur(q.gross)}</b></div><div class="kv"><span>${q.gain >= 0 ? 'Lucro' : 'Prejuízo'}</span><b class="num ${cls(q.gain)}">${eur(q.gain)}</b></div><div class="kv"><span>Taxa de imposto</span><b>${q.tax > 0 ? rates.map((r) => r + '%').join(' + ') : 'Sem imposto (sem lucro)'}</b></div><div class="kv"><span>Imposto a pagar</span><b class="num down">${eur(q.tax)}</b></div><div class="kv"><span><b>Recebes</b></span><b class="num up">${eur(q.net)}</b></div></div>`;
   } else if (q && !q.ok && amtC > 0) detail = `<span class="down">${esc(q.error)}</span>`;
-  return `<div class="stack">
+  const ok = open && amtC > 0 && !ui.busy && (buy || (q && q.ok));
+  const label = !open ? (S.me.ready ? 'Estás pronto' : 'Negociação fechada') : amtC <= 0 ? 'Escreve um montante' : `${buy ? '📈 Comprar' : '📉 Vender'} ${eur(amtC)} de ${s.ticker}`;
+  const n = S.news;
+  return `<div class="stack has-dock">
     <button class="btn ghost sm" data-act="back" style="justify-self:start">← Voltar</button>
     <div class="card row">${logo(s, 48)}<div class="grow"><h2 style="font-size:20px">${esc(s.name)}</h2><span class="muted">${esc(s.ticker)}</span></div><div style="text-align:right"><div class="num" style="font-size:20px">${eur(s.price)}</div><div class="num ${cls(s.change)}">${pct(s.change)}</div></div></div>
-    <div class="card" style="padding:10px 8px">${priceChart(s.history || [])}</div>
-    <div class="stats" style="margin:0"><div class="stat"><small>Dinheiro disponível</small><span class="num">${eur(S.me.cash)}</span></div><div class="stat"><small>Tens desta ação</small><span class="num">${qtyFmt(s.owned)}</span><div class="muted" style="font-size:12px">${eur(s.ownedValue)}</div></div></div>
+    ${n ? `<details class="card" style="padding:12px 14px"><summary><b>📰 Notícia:</b> ${esc(n.title)}</summary><p style="margin:8px 0 4px"><b>${esc(n.headline)}</b></p><ul class="newsl">${n.extras.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>` : ''}
+    <div class="card" style="padding:10px 8px">${priceChart(s.history || [], { marks, avg })}${marks.length ? '<p class="muted" style="font-size:12px;text-align:center;margin:4px 0 0">🟡 Pontos amarelos: onde compraste (ronda e preço) · linha tracejada: preço médio</p>' : ''}</div>
+    <div class="stats" style="margin:0"><div class="stat"><small>Dinheiro disponível</small><span class="num">${eur(S.me.cash)}</span></div><div class="stat"><small>Tens desta ação</small><span class="num">${qtyFmt(s.owned)}</span><div class="muted" style="font-size:12px">${eur(s.ownedValue)}${h ? ` · <span class="${cls(h.ret)}">${pct(h.ret, 1)}</span>` : ''}</div></div></div>
     ${open ? '' : `<div class="cd">${S.me.ready ? 'Estás pronto. Toca em "Editar as minhas operações" na lista para negociar.' : 'A negociação está fechada: só podes ver.'}</div>`}
-    <div class="seg" role="tablist"><button class="${buy ? 'on buy' : ''}" data-act="side" data-v="buy">COMPRAR</button><button class="${!buy ? 'on sell' : ''}" data-act="side" data-v="sell">VENDER</button></div>
-    <div class="card"><label class="f" for="amt" style="margin-top:0">Quanto dinheiro (€)</label><input id="amt" class="amt" inputmode="decimal" placeholder="0.00" value="${esc(ui.amount)}"><div class="quick">${buy ? quickBuy : quickSell}</div>${detail ? `<p class="muted" style="margin:12px 0 0;text-align:center">${detail}</p>` : ''}</div>
-    <button class="btn ${buy ? 'green' : 'red'}" data-act="confirm" ${open && amtC > 0 && !ui.busy && (buy || (q && q.ok)) ? '' : 'disabled'}>${buy ? 'Comprar' : 'Vender'}${amtC > 0 ? ' · ' + eur(amtC) : ''}</button>
-  </div>`;
+    <div class="seg" role="tablist"><button class="${buy ? 'on buy' : ''}" data-act="side" data-v="buy">📈 COMPRAR</button><button class="${!buy ? 'on sell' : ''}" data-act="side" data-v="sell">📉 VENDER</button></div>
+    ${!buy && lots.length ? `<div class="card" style="padding:12px 14px"><b>Imposto sobre o lucro</b><div class="muted" style="font-size:12px;margin:2px 0 6px">Vendes primeiro as ações mais antigas. 28% sobre o lucro; 20% se as tiveres há 4 ou mais rondas. Prejuízos não pagam imposto.</div>${lots.map((l) => `<div class="kv" style="font-size:13px"><span>Ronda ${l.round} · comprada a ${eur(l.price)}</span><span>${rateInfo(l)}</span></div>`).join('')}</div>` : ''}
+    <div class="card"><label class="f" for="amt" style="margin-top:0">Quanto dinheiro (€)</label><input id="amt" class="amt" inputmode="decimal" placeholder="0.00" value="${esc(ui.amount)}"><div class="quick">${buy ? quickBuy : quickSell}</div>${detail ? `<div style="margin:12px 0 0;text-align:center" class="muted">${detail}</div>` : ''}</div>
+  </div>
+  <div class="dock"><button class="btn bigact ${buy ? 'green' : 'red'}" data-act="confirm" ${ok ? '' : 'disabled'}>${label}</button></div>`;
 }
 
 // ---------- final results
@@ -230,7 +278,7 @@ function finalView() {
     <div class="card champ pop"><div class="trophy">🏆</div><div class="muted">CAMPEÃO ELVASTOCKS</div><h1 style="font-size:30px;margin:6px 0">${esc(c.name)}</h1><div class="num gold" style="font-size:24px">${eur(c.wealth)}</div><div class="${cls(c.ret)} num">${pct(c.ret)} · começou com ${eur0(c.start)}</div></div>
     ${R.awards?.bestReturn ? `<div class="card" style="text-align:center">📈 Melhor retorno: <b>${esc(R.awards.bestReturn.name)}</b> <span class="up num">${pct(R.awards.bestReturn.ret, 1)}</span><div class="muted" style="font-size:12px">Os orçamentos iniciais são diferentes, por isso o retorno em % é a medida mais justa.</div></div>` : ''}
     <div class="card"><h3>Ficaste em ${me.rank}.º lugar</h3><p class="muted">${esc(me.profile.name)}: ${esc(me.profile.why)}</p>
-      <div class="kv"><span>Riqueza final</span><b class="num">${eur(me.wealth)}</b></div><div class="kv"><span>Ganho/perda total</span><b class="num ${cls(me.gain)}">${eur(me.gain)}</b></div><div class="kv"><span>Impostos pagos</span><b class="num">${eur(me.tax)}</b></div>
+      <div class="kv"><span>Perguntas certas</span><b>🎓 ${me.quiz.correct}/${me.quiz.total}</b></div><div class="kv"><span>Riqueza final</span><b class="num">${eur(me.wealth)}</b></div><div class="kv"><span>Ganho/perda total</span><b class="num ${cls(me.gain)}">${eur(me.gain)}</b></div><div class="kv"><span>Impostos pagos</span><b class="num">${eur(me.tax)}</b></div>
       ${me.best ? `<div class="kv"><span>Melhor investimento</span><b>${esc(me.best.name)} ${eur0(me.best.pnl)}</b></div>` : ''}${me.worst ? `<div class="kv"><span>Pior investimento</span><b>${esc(me.worst.name)} ${eur0(me.worst.pnl)}</b></div>` : ''}
       <div class="kv"><span>Power-up</span><b>${pu(me)}</b></div>
       <div class="kv"><span>Imposto reduzido de 20%</span><b>${me.patience.reducedRateSales ? `usado ${me.patience.reducedRateSales}×, poupaste ${eur0(me.patience.taxSaved)}` : 'não usado'}</b></div></div>
@@ -295,6 +343,7 @@ document.addEventListener('click', async (e) => {
     case 'quick': ui.amount = String(Math.min(Number(v), S.me.cash / 100)); render(); break;
     case 'quickmax': ui.amount = ui.side === 'buy' ? (S.me.cash / 100).toFixed(2) : (stock().ownedValue / 100).toFixed(2); requote(); render(); break;
     case 'quickpct': ui.amount = ((stock().ownedValue * Number(v)) / 10000).toFixed(2); requote(); render(); break;
+    case 'quiz': await act({ action: 'answerQuiz', choice: Number(v) }); break;
     case 'ready': fx.beep(700, 80, 40); await act({ action: 'ready' }, 'Estás pronto'); break;
     case 'unready': await act({ action: 'unready' }, 'Podes voltar a negociar'); break;
     case 'confirm': {
