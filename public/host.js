@@ -57,6 +57,15 @@ const headBar = () => `<div class="hbar"><span class="brand" style="font-size:18
   ${S && S.status !== 'lobby' ? '<button class="btn ghost sm" data-act="restart">↺ Reiniciar jogo</button>' : ''}<button class="btn ghost sm" data-act="newroom">＋ Nova sala</button>
   <button class="btn ghost sm" data-act="pres">${pres ? 'Exit presentation' : '📺 Presentation mode'}</button></div>`;
 
+const MODE_INFO = {
+  easy: ['🟢 Fácil', 'As notícias dizem os nomes das empresas afetadas, com explicação e vista por setor.'],
+  medium: ['🟡 Intermédio', 'Mistura de notícias com nomes e notícias gerais. Sem explicação antecipada.'],
+  hard: ['🔴 Difícil', 'Notícias gerais, sem nomes: tens de deduzir quem ganha e quem perde.'],
+};
+function modePicker() {
+  return `<div style="margin:12px 0 4px"><b>Modo de jogo</b><div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap">${Object.entries(MODE_INFO).map(([k, [l]]) => `<button class="btn ${S.mode === k ? 'green' : 'ghost'} sm" data-act="mode" data-v="${k}" aria-pressed="${S.mode === k}">${S.mode === k ? '✓ ' : ''}${l}</button>`).join('')}</div><p class="muted" style="font-size:13px;margin:8px 0 0">${MODE_INFO[S.mode || 'medium'][1]}</p></div>`;
+}
+
 function lobbyView() {
   const n = S.players.length;
   const ok = n > 0 && S.players.every((p) => p.budget != null);
@@ -64,6 +73,7 @@ function lobbyView() {
   <div class="card"><div class="muted">Join at <b>${esc(location.host)}</b> with code</div><div class="code">${esc(S.code)}</div>
     <div class="row" style="align-items:flex-start"><img class="qr" alt="QR code to join" src="${API}/api/qr?text=${encodeURIComponent(joinUrl())}"><div class="grow muted">Players scan the QR code or open<br><b style="word-break:break-all">${esc(joinUrl())}</b><br><br>Up to ${S.maxPlayers} players. Names must be unique.<br><br><a href="${esc(joinUrl())}" target="_blank" rel="noopener">Join as a player in a new tab →</a></div></div></div>
   <div class="card"><h2 style="font-size:20px">Players & starting budgets (${n}/${S.maxPlayers})</h2><p class="muted" style="font-size:13px">You assign every budget. Nothing is automatic. Budgets lock when the game starts.</p>
+    ${modePicker()}
     ${S.players.map((p) => `<div class="prow"><span class="avatar" style="background:${esc(p.avatar)}">${esc(p.name[0].toUpperCase())}</span><div><b>${esc(p.name)}</b> <span class="dot ${p.connected ? 'on' : ''}" title="${p.connected ? 'connected' : 'offline'}"></span> <span class="muted" style="font-size:12px">${p.budget == null ? 'sem orçamento' : '€' + (p.budget / 100).toLocaleString('pt-PT')}</span><div class="mini" style="margin-top:4px">${presets.map((v) => `<button class="chip" data-act="preset" data-id="${esc(p.id)}" data-v="${v}" aria-pressed="${p.budget === v * 100}" style="border:0;cursor:pointer;${p.budget === v * 100 ? 'background:var(--green);color:#05241b;box-shadow:0 0 0 2px var(--green)' : 'color:var(--text)'}">${p.budget === v * 100 ? '✓ ' : ''}${v / 1000}k</button>`).join('')}</div></div>
       <input class="bud" data-id="${esc(p.id)}" inputmode="decimal" value="${p.budget == null ? '' : p.budget / 100}" placeholder="€ budget" aria-label="Budget for ${esc(p.name)}"><button class="btn ghost sm" data-act="kick" data-id="${esc(p.id)}" aria-label="Remove ${esc(p.name)}">✕</button></div>`).join('') || '<p class="muted">Waiting for players to join…</p>'}
     <div class="ctl" style="margin-top:14px"><button class="btn ghost sm" data-act="reset">Reset to defaults (€100,000 each)</button><button class="btn ghost sm" data-act="same">Same amount for all…</button></div>
@@ -100,7 +110,7 @@ function gameView() {
         ${[1, 2, 4].map((v) => `<button class="btn ${S.speed === v ? '' : 'ghost'} sm" data-act="speed" data-v="${v}">${v}×</button>`).join('')}` : ''}
       </div></div>
     ${S.quiz ? `<div class="card" style="border-left:4px solid var(--gold)"><b>🎓 Pergunta da ronda ${S.quiz.round}:</b> ${esc(S.quiz.question)}<div class="muted" style="margin-top:4px">${S.quiz.answered}/${S.quiz.total} jogadores responderam</div></div>` : ''}
-    <div class="card">${S.news ? `<span class="chip">Round ${S.news.round} event</span> <span class="chip" style="color:var(--gold)">fictional scenario</span><h2 style="font-size:22px;margin:8px 0">${esc(S.news.headline)}</h2><p>${esc(S.news.summary)}</p><p class="muted">Teaches: ${esc(S.news.teaches)}</p>${S.news.real ? `<p class="muted">Real coverage: ${esc(S.news.real.headline)} (${esc(S.news.real.publisher)}) <a href="${esc(S.news.real.url)}" target="_blank" rel="noopener noreferrer">source</a></p>` : '<p class="muted" style="font-size:12px">No live news provider configured: showing the fictional practice scenario only.</p>'}` : ''}</div>
+    <div class="card">${S.news ? `<span class="chip">Round ${S.news.round} event</span> <span class="chip" style="color:var(--gold)">fictional scenario</span><h2 style="font-size:22px;margin:8px 0">${esc(S.news.headline)}</h2><p>${esc(S.news.summary)}</p><p class="muted">${S.news.teaches ? 'Teaches: ' + esc(S.news.teaches) : ''}${S.news.affected ? '<br>Empresas afetadas: ' + S.news.affected.map((id) => esc(byId[id].name)).join(', ') : ''}</p>${S.news.real ? `<p class="muted">Real coverage: ${esc(S.news.real.headline)} (${esc(S.news.real.publisher)}) <a href="${esc(S.news.real.url)}" target="_blank" rel="noopener noreferrer">source</a></p>` : '<p class="muted" style="font-size:12px">No live news provider configured: showing the fictional practice scenario only.</p>'}` : ''}</div>
   </div>
   <div class="grid" style="margin-top:16px">
     <div class="card"><h2 style="font-size:20px">Leaderboard ${S.phase === 'trading' ? `<span class="muted" style="font-size:14px">· ${ready}/${S.players.length} ready</span>` : ''}</h2>
@@ -134,6 +144,7 @@ app.addEventListener('click', async (e) => {
     catch (er) { toast(er.message, 'err'); }
   } else if (a === 'pres') { pres = !pres; render(); }
   else if (a === 'preset') await hostCall({ action: 'setBudget', playerId: el.dataset.id, euros: Number(el.dataset.v) });
+  else if (a === 'mode') await hostCall({ action: 'setMode', mode: el.dataset.v });
   else if (a === 'kick') await hostCall({ action: 'removePlayer', playerId: el.dataset.id });
   else if (a === 'reset') await hostCall({ action: 'resetBudgets' }, 'All budgets set to €100,000');
   else if (a === 'same') { const v = window.prompt('Starting budget for every player (€):', '100000'); if (v != null) await hostCall({ action: 'setAllBudgets', euros: Number(v) }); }

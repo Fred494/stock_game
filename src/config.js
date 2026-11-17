@@ -10,6 +10,7 @@ export const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 export const TOTAL_ROUNDS = 12;
 export const MAX_PLAYERS = 8;
 export const SHOP_AFTER_ROUND = 6;
+export const CASH_INTEREST = 0.015; // interest on idle cash, paid every round
 export const POWERUP_COST = 800000; // cents (EUR 8,000)
 export const CONNECTED_WINDOW_MS = 12000;
 export const READY_COUNTDOWN_MS = 5000;

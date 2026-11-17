@@ -101,6 +101,7 @@ async function api(req, res, url) {
         case 'setAllBudgets': for (const p of game.players) G.setBudget(game, p.id, b.euros); break;
         case 'resetBudgets': G.resetBudgets(game); break;
         case 'removePlayer': G.removePlayer(game, b.playerId); break;
+        case 'setMode': G.setMode(game, b.mode); break;
         case 'start': G.startGame(game); break;
         case 'intro': G.endIntro(game); break;
         case 'pause': G.setPaused(game, true); break;
@@ -111,7 +112,7 @@ async function api(req, res, url) {
         case 'resetGame': G.resetGame(game); break;
         case 'newRoom': {
           const code = G.makeCode((c) => games.has(c));
-          const next = G.createGame({ code, timing: game.timingName, hostToken: tok }).game;
+          const next = G.createGame({ code, timing: game.timingName, hostToken: tok, mode: game.mode, exclude: (game.market.events || []).map((e) => e.key) }).game;
           games.set(code, next); markDirty(next);
           prefetchNews(next, () => markDirty(next)).catch(() => {});
           extra = { nextCode: code };
@@ -121,7 +122,7 @@ async function api(req, res, url) {
           if (game.status !== 'finished') throw new G.GameError('not_finished', 'Game is not finished.');
           if (!game.nextCode) {
             const code = G.makeCode((c) => games.has(c));
-            const next = G.createGame({ code, timing: game.timingName, hostToken: tok }).game;
+            const next = G.createGame({ code, timing: game.timingName, hostToken: tok, mode: game.mode, exclude: (game.market.events || []).map((e) => e.key) }).game;
             games.set(code, next); game.nextCode = code; markDirty(next);
             prefetchNews(next, () => markDirty(next)).catch(() => {});
           }

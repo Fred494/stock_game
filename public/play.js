@@ -2,6 +2,8 @@ import { api, esc, $, eur, eur0, pct, qtyFmt, cls, logo, toast, fx, POWERUP_INFO
 
 const AVATARS = ['#4F8EFF', '#2BD99F', '#F5C56B', '#F26B78', '#A78BFA', '#38BDF8', '#FB923C', '#F472B6'];
 const KEY = 'mm-session';
+const SECTOR_PT = { semis: '🔬 Chips e semicondutores', bigtech: '💻 Grandes tecnológicas', payments: '💳 Pagamentos', utilities: '⚡ Eletricidade', energy: '🛢️ Petróleo e energia', health: '💊 Saúde', space: '🚀 Espaço', retail: '🛒 Retalho', staples: '🥤 Bens essenciais', travel: '✈️ Viagens' };
+const MODE_PT = { easy: '🟢 Fácil', medium: '🟡 Intermédio', hard: '🔴 Difícil' };
 const DIR_PT = { UP: 'SUBIR', DOWN: 'DESCER', FLAT: 'ficar IGUAL' };
 const uid = () => { try { if (crypto.randomUUID) return crypto.randomUUID(); } catch { /* insecure context */ } return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`; };
 const load = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } };
@@ -70,11 +72,12 @@ function render() {
 
 function renderTop() {
   if (!S || S.status !== 'running') { $top.innerHTML = ''; return; }
+  if (!S.intro && ui.screen === 'trade' && ui.sel) { $top.innerHTML = `<div class="backbar"><button class="backbtn" data-act="back">← VOLTAR ÀS AÇÕES</button></div>`; return; }
   const open = S.phase === 'trading';
   const status = open ? ['open', S.paused ? 'Negociação aberta (relógio parado)' : 'Negociação aberta'] : S.paused ? ['paused', 'Em pausa'] : S.phase === 'news' ? ['closed', 'Lê a notícia · negociação ainda fechada'] : S.phase === 'reaction' ? ['closed', 'Reação do mercado'] : S.phase === 'shop' ? ['closed', 'Loja de power-ups'] : ['closed', 'Negociação fechada'];
   $top.innerHTML = `<div class="top"><div class="top-in">
     <div class="row"><span class="brand">ELVA<b>STOCKS</b></span><span class="muted" style="font-weight:700">${esc(S.round)}/${S.totalRounds} · ${esc(PHASE_LABEL[S.phase])}</span><span class="clock num" id="clock"></span></div>
-    <div class="row" style="margin-top:6px"><span class="chip ${status[0]}">${status[1]}</span><span class="grow"></span><button class="btn ghost sm" data-act="sound" aria-label="Ligar ou desligar o som">${fx.on ? '🔊' : '🔇'}</button></div>
+    <div class="row" style="margin-top:6px"><span class="chip ${status[0]}">${status[1]}</span><span class="muted" style="font-size:12px">${MODE_PT[S.mode] || ''}</span><span class="grow"></span><button class="btn ghost sm" data-act="sound" aria-label="Ligar ou desligar o som">${fx.on ? '🔊' : '🔇'}</button></div>
     <div class="stats"><div class="stat"><small>Dinheiro</small><span class="num">${eur(S.me.cash)}</span></div><div class="stat"><small>Riqueza total</small><span class="num">${eur(S.me.wealth)}</span></div></div>
     <div class="bar"><i id="bar"></i></div></div></div>`;
 }
@@ -98,6 +101,8 @@ function introView() {
     <li><b>Objetivo:</b> acabar com mais dinheiro (riqueza) depois de 12 rondas.</li>
     <li><b>Cada ronda tem 3 fases:</b> ① ver a notícia, ② comprar e vender ações, ③ ver como o mercado reagiu.</li>
     <li><b>Imposto:</b> 28% sobre os lucros ao vender (20% se mantiveres a ação 4 ou mais rondas). Perdas não pagam imposto.</li>
+    <li><b>Juros:</b> o dinheiro parado ganha ${(S.interestRate * 100).toFixed(1).replace('.', ',')}% no fim de cada ronda.</li>
+    <li><b>Modo:</b> ${MODE_PT[S.mode]}.</li>
     <li><b>Depois da ronda 6:</b> loja de power-ups (um por jogador).</li>
     <li><b>Sem tempo:</b> o anfitrião inicia cada fase.</li></ul></div>
   <p class="muted" style="text-align:center">À espera que o anfitrião comece a ronda 1…</p></div>`;
@@ -125,7 +130,7 @@ function newsCard() {
   const real = n.real ? `<div class="card" style="margin-top:10px;background:var(--bg)"><span class="tag">NOTÍCIA REAL</span><p style="margin:6px 0 2px"><b>${esc(n.real.headline)}</b></p><span class="muted" style="font-size:12px">${esc(n.real.publisher)} · ${n.real.publishedAt ? esc(new Date(n.real.publishedAt).toLocaleDateString()) : ''} · <a href="${esc(n.real.url)}" target="_blank" rel="noopener noreferrer">fonte</a></span></div>` : '';
   return `<div class="card news pop"><span class="tag fict">CENÁRIO DE PRÁTICA · FICTÍCIO</span> <span class="tag">Ronda ${n.round}</span>
     <h3>${esc(n.headline)}</h3>
-    ${full ? `<ul class="newsl">${(n.extras && n.extras.length ? n.extras : [n.summary]).map((x) => `<li>${esc(x)}</li>`).join('')}</ul><p class="muted" style="font-size:14px;margin:8px 0 0">💡 <b>Aprende:</b> ${esc(n.teaches)}</p>${real}`
+    ${full ? `<ul class="newsl">${(n.extras && n.extras.length ? n.extras : [n.summary]).map((x) => `<li>${esc(x)}</li>`).join('')}</ul>${n.affected ? `<p style="font-size:14px;margin:8px 0 0">🎯 <b>Empresas afetadas:</b> ${n.affected.map((id) => esc((S.stocks.find((x) => x.id === id) || { name: id }).name)).join(', ')}</p>` : ''}${n.teaches ? `<p class="muted" style="font-size:14px;margin:8px 0 0">💡 <b>Aprende:</b> ${esc(n.teaches)}</p>` : ''}${real}`
       : `<p class="muted" style="font-size:13px;margin:0">${esc(n.title)}</p>`}</div>`;
 }
 
@@ -176,8 +181,9 @@ function reactionCard() {
   const money = (c) => `<b class="num ${cls(c)}">${c > 0 ? '+' : c < 0 ? '−' : ''}${eur0(Math.abs(c))}</b>`;
   const recap = mr ? `<div class="card pop" style="border-left:4px solid var(--green)"><h3 style="margin:0 0 6px">O teu resumo da ronda</h3>
     ${mr.rows.length ? mr.rows.map((x) => `<div class="kv"><span>${x.pnl >= 0 ? 'Ganhaste' : 'Perdeste'} com <b>${esc(byId[x.id].name)}</b> <span class="muted">(${pct(x.pct, 1)})</span></span>${money(x.pnl)}</div>`).join('') : '<p class="muted" style="margin:4px 0">Não tinhas ações nesta ronda: o teu dinheiro ficou parado.</p>'}
+    ${mr.interest ? `<div class="kv"><span>💰 Juros do dinheiro parado</span>${money(mr.interest)}</div>` : ''}
     ${mr.payout ? `<div class="kv"><span>Bónus do power-up</span>${money(mr.payout)}</div>` : ''}
-    <div class="kv"><span><b>Total da ronda</b></span>${money(mr.total + mr.payout)}</div>
+    <div class="kv"><span><b>Total da ronda</b></span>${money(mr.total + mr.payout + (mr.interest || 0))}</div>
     <p class="muted" style="font-size:12px;margin:6px 0 0">${mr.rows.length && mr.rows[0].pnl > 0 ? `A tua melhor decisão: ${esc(byId[mr.rows[0].id].name)}.` : ''}${mr.rows.length && mr.rows[mr.rows.length - 1].pnl < 0 ? ` A pior: ${esc(byId[mr.rows[mr.rows.length - 1].id].name)}.` : ''}</p></div>` : '';
   return `${recap}<div class="card pop" style="margin-top:12px"><span class="tag">REAÇÃO DO MERCADO · SIMULADA</span><h3 style="margin:6px 0">${esc(r.title)}</h3>
     <p class="muted" style="font-size:13px">${esc(r.teaches)}${r.reversed ? ' Desta vez o mercado ignorou a manchete: a notícia já estava refletida no preço.' : ''}</p>
@@ -207,6 +213,21 @@ function powerupCard() {
   return '';
 }
 
+function stockRow(s, shareOf) {
+  const h = s.owned > 0 ? holdInfo(s) : null;
+  return `<button class="stock ${s.relevant ? 'rel' : ''}" data-act="open" data-id="${esc(s.id)}">
+      ${logo(s)}<div class="grow"><div class="nm">${esc(s.name)}${s.owned > 0 ? `<span class="own">${qtyFmt(s.owned)}</span>` : ''}${s.relevant ? '<span class="aff">⚡ afetada</span>' : ''}</div><div class="sub">${esc(s.ticker)}<span class="vol ${s.vol}">${({ low: 'BAIXA', medium: 'MÉDIA', high: 'ALTA' })[s.vol]}</span>${h ? ` · <b>${Math.round(100 * (shareOf[s.id] || 0))}%</b> da carteira · <b class="${cls(h.ret)}">${pct(h.ret, 1)}</b>` : ''}</div></div>
+      <div class="px"><div class="num">${eur(s.price)}</div><div class="num ${cls(s.change)}" style="font-size:13px">${S.settled ? pct(s.change) : '—'}</div></div></button>`;
+}
+function sectorGroups(list, shareOf) {
+  const by = {};
+  for (const s of list) (by[s.sector] ||= []).push(s);
+  return Object.entries(by).sort((a, b) => b[1].filter((x) => x.relevant).length - a[1].filter((x) => x.relevant).length).map(([sec, arr]) => {
+    const n = arr.filter((x) => x.relevant).length;
+    return `<div class="secgrp"><div class="sechead"><b>${SECTOR_PT[sec] || esc(sec)}</b>${n ? `<span class="aff">⚡ ${n} afetada${n > 1 ? 's' : ''}</span>` : '<span class="muted" style="font-size:12px">nenhuma afetada</span>'}</div>${arr.map((x) => stockRow(x, shareOf)).join('')}</div>`;
+  });
+}
+
 function stocksView() {
   let list = S.stocks.slice();
   const q = ui.q.trim().toLowerCase();
@@ -221,11 +242,9 @@ function stocksView() {
   return `<div class="stack">
     ${quizCard()}${openingCard()}${newsCard()}${powerupCard()}${reactionCard()}
     <input id="search" type="search" placeholder="Procurar empresas" value="${esc(ui.q)}" aria-label="Procurar ações">
-    <div class="chips">${[['all', 'Todas'], ['mine', `As minhas (${P.rows.length})`]].map(([k, l]) => `<button class="fchip ${ui.filter === k ? 'on' : ''}" data-act="filter" data-v="${k}">${l}</button>`).join('')}</div>
+    <div class="chips">${[['all', 'Todas'], ...(S.mode === 'easy' ? [['sector', 'Por setor']] : []), ['mine', `As minhas (${P.rows.length})`]].map(([k, l]) => `<button class="fchip ${ui.filter === k ? 'on' : ''}" data-act="filter" data-v="${k}">${l}</button>`).join('')}</div>
     ${mineOnly ? portfolioCard() : ''}
-    ${list.map((s) => { const h = s.owned > 0 ? holdInfo(s) : null; return `<button class="stock" data-act="open" data-id="${esc(s.id)}">
-      ${logo(s)}<div class="grow"><div class="nm">${esc(s.name)}${s.owned > 0 ? `<span class="own">${qtyFmt(s.owned)}</span>` : ''}</div><div class="sub">${esc(s.ticker)}<span class="vol ${s.vol}">${({ low: 'BAIXA', medium: 'MÉDIA', high: 'ALTA' })[s.vol]}</span>${h ? ` · <b>${Math.round(100 * (shareOf[s.id] || 0))}%</b> da carteira · <b class="${cls(h.ret)}">${pct(h.ret, 1)}</b>` : ''}</div></div>
-      <div class="px"><div class="num">${eur(s.price)}</div><div class="num ${cls(s.change)}" style="font-size:13px">${S.settled ? pct(s.change) : '—'}</div></div></button>`; }).join('') || `<p class="muted">${mineOnly ? 'Ainda não tens ações.' : 'Nenhuma ação encontrada.'}</p>`}
+    ${(S.mode === 'easy' && ui.filter === 'sector' ? sectorGroups(list, shareOf) : list.map((x) => stockRow(x, shareOf))).join('') || `<p class="muted">${mineOnly ? 'Ainda não tens ações.' : 'Nenhuma ação encontrada.'}</p>`}
     <p class="muted" style="font-size:11px;text-align:center">Os preços são valores simulados em euros virtuais (dados de demonstração). Os logótipos pertencem aos seus donos.</p>
   </div>${dock}${canTrade ? '' : ''}`;
 }
@@ -255,7 +274,6 @@ function tradeView() {
   const label = !open ? (S.me.ready ? 'Estás pronto' : 'Negociação fechada') : amtC <= 0 ? 'Escreve um montante' : `${buy ? '📈 Comprar' : '📉 Vender'} ${eur(amtC)} de ${s.ticker}`;
   const n = S.news;
   return `<div class="stack has-dock">
-    <button class="btn ghost sm" data-act="back" style="justify-self:start">← Voltar</button>
     <div class="card row">${logo(s, 48)}<div class="grow"><h2 style="font-size:20px">${esc(s.name)}</h2><span class="muted">${esc(s.ticker)}</span></div><div style="text-align:right"><div class="num" style="font-size:20px">${eur(s.price)}</div><div class="num ${cls(s.change)}">${pct(s.change)}</div></div></div>
     ${n ? `<details class="card" style="padding:12px 14px"><summary><b>📰 Notícia:</b> ${esc(n.title)}</summary><p style="margin:8px 0 4px"><b>${esc(n.headline)}</b></p><ul class="newsl">${n.extras.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></details>` : ''}
     <div class="card" style="padding:10px 8px">${priceChart(s.history || [], { marks, avg })}${marks.length ? '<p class="muted" style="font-size:12px;text-align:center;margin:4px 0 0">🟡 Pontos amarelos: onde compraste (ronda e preço) · linha tracejada: preço médio</p>' : ''}</div>

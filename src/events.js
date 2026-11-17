@@ -122,17 +122,34 @@ const BASE_EVENTS = [
     { AMZN: 'Cresce com a compra da maior retalhista.', WMT: 'Deixa de existir como empresa independente.', COST: 'Passa a ter um concorrente gigante.', NFLX: 'Promoção atrai novos clientes.', V: 'Mais pagamentos a processar.', MA: 'Mais pagamentos a processar.' }),
 ];
 
-export const EVENT_POOL = [...BASE_EVENTS, ...EXTRA_EVENTS];
+import { EASY_EVENTS } from './events_easy.js';
+
+// Company/brand names: a story that mentions one of these is an EASY story (names the companies); otherwise HARD (general).
+const NAMES = ['NVIDIA', 'Apple', 'iPhone', 'Meta', 'Instagram', 'Amazon', 'AMD', 'Intel', 'Visa', 'Mastercard', 'EDP', 'Galp', 'Johnson', 'J&J', 'AstraZeneca', 'TSMC', 'TSM', 'SpaceX', 'Samsung', 'Costco', 'Coca-Cola', 'Pepsi', 'Procter', 'P&G', 'Philip Morris', 'Aramco', 'Walmart', 'Zoom', 'Netflix', 'Ryanair', 'Nokia'];
+const NAME_RE = new RegExp('(?<![\p{L}])(' + NAMES.map((n) => n.replace(/[.*+?^${}()|[]\&]/g, '\$&')).join('|') + ')(?![\p{L}])', 'u');
+export const namesCompany = (e) => NAME_RE.test([e.title, e.headline, ...e.extras].join(' | '));
+
+export const EVENT_POOL = [...BASE_EVENTS, ...EXTRA_EVENTS, ...EASY_EVENTS].map((e) => ({ ...e, group: namesCompany(e) ? 'easy' : 'hard' }));
 export const FINALE_KEYS = ['blackout', 'mega-merger', ...EXTRA_EVENTS.filter((e) => e.finale).map((e) => e.key)];
 /** The original 12 stories, in their original order (fallback for old saved games and tests). */
 export const EVENTS = EVENT_POOL.slice(0, 12);
+export const MODES = ['easy', 'medium', 'hard'];
 
-/** Pick 12 stories for one game: 11 random normal ones in random order, then one random finale. */
-export function pickEvents(rng) {
+/**
+ * Pick 12 stories for one game: 11 normal ones in random order, then one finale.
+ * easy = only stories that name companies; hard = only general stories; medium = a mix (6 easy + 5 hard).
+ * Stories in `exclude` (the previous game) are avoided whenever enough others remain.
+ */
+export function pickEvents(rng, mode = 'medium', exclude = []) {
   const shuffle = (a) => { const x = [...a]; for (let i = x.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [x[i], x[j]] = [x[j], x[i]]; } return x; };
-  const normals = shuffle(EVENT_POOL.filter((e) => !FINALE_KEYS.includes(e.key))).slice(0, 11);
-  const finale = shuffle(EVENT_POOL.filter((e) => FINALE_KEYS.includes(e.key)))[0];
-  return [...normals, finale].map((e, i) => ({ ...e, round: i + 1 }));
+  const ex = new Set(exclude);
+  const take = (list, n) => { const fresh = shuffle(list.filter((e) => !ex.has(e.key))); const used = shuffle(list.filter((e) => ex.has(e.key))); return [...fresh, ...used].slice(0, n); };
+  const normals = EVENT_POOL.filter((e) => !FINALE_KEYS.includes(e.key));
+  const finales = EVENT_POOL.filter((e) => FINALE_KEYS.includes(e.key) && (mode === 'medium' || e.group === (mode === 'easy' ? 'easy' : 'hard')));
+  const easy = normals.filter((e) => e.group === 'easy'), hard = normals.filter((e) => e.group === 'hard');
+  const picked = mode === 'easy' ? take(easy, 11) : mode === 'hard' ? take(hard, 11) : [...take(easy, 6), ...take(hard, 5)];
+  const fin = take(finales, 1);
+  return [...shuffle(picked), ...fin].map((e, i) => ({ ...e, round: i + 1 }));
 }
 
 // Opening scenario: a PUBLIC pre-game "rule" showing how stocks behaved before round 1,

@@ -90,3 +90,13 @@ details summary { cursor: pointer; font-weight: 700; }
 .dock .btn.bigact:disabled { opacity: .45; box-shadow: none; }
 .seg button { font-size: 16px; padding: 15px 8px; }
 .quick button { min-height: 46px; font-size: 15px; }
+
+/* ---- modes, sectors, back bar ---- */
+.backbar { position: sticky; top: 0; z-index: 30; padding: 10px 16px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.backbtn { width: 100%; max-width: 560px; display: block; margin: 0 auto; min-height: 56px; border-radius: 16px; background: var(--blue); color: #fff; font-size: 18px; font-weight: 800; letter-spacing: .3px; box-shadow: 0 4px 14px rgba(79,142,255,.4); }
+.backbtn:active { transform: scale(.98); }
+.aff { font-size: 11px; background: rgba(245,197,107,.18); color: var(--gold); border-radius: 6px; padding: 1px 6px; margin-left: 6px; font-weight: 700; white-space: nowrap; }
+.secgrp { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 6px; }
+.sechead { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px 0; }
+.stock.rel { border-color: rgba(245,197,107,.7); box-shadow: 0 0 0 1px rgba(245,197,107,.25); }
+#top:has(.backbar) { position: sticky; top: 0; z-index: 30; }

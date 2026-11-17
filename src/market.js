@@ -29,9 +29,9 @@ const noiseFor = (rng, vol) => clamp((gauss(rng) * NOISE[vol]) / 2, NOISE[vol]);
  * return = the event's headline move for that company (events.js `moves`) + bounded random noise.
  * Output is SERVER-SECRET until each round is settled.
  */
-export function buildMarket(seed) {
+export function buildMarket(seed, mode = 'medium', exclude = []) {
   const rng = mulberry32(seed >>> 0);
-  const events = pickEvents(rng); // 12 stories for this game, order and selection depend on the seed
+  const events = pickEvents(rng, mode, exclude); // 12 stories for this game, order and selection depend on the seed
 
   // Opening scenario (public history): how the stocks behaved BEFORE round 1, so the game starts with volatility.
   const base = Object.fromEntries(STOCKS.map((s) => [s.id, s.startPriceCents]));
@@ -61,7 +61,7 @@ export function buildMarket(seed) {
     rounds.push({ round: r, reversed: false, intensity: 1, marketPct: 0, detail });
   }
   const quiz = pickQuiz(mulberry32(((seed >>> 0) ^ 0x5bd1e995) >>> 0)); // separate rng: does not change prices
-  return { seed, path, rounds, prelude, events, quiz };
+  return { seed, mode, path, rounds, prelude, events, quiz };
 }
 
 export const roundReturn = (market, r, id) => market.path[r][id] / market.path[r - 1][id] - 1;

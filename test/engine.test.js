@@ -338,7 +338,7 @@ test('full 12-round game, final ranking and tie-breakers, views hide the future'
   assert.deepEqual(res.players.map((x) => x.wealth), [...res.players.map((x) => x.wealth)].sort((a, b) => b - a));
   assert.equal(game.history[ps[0].p.id].length, 13);
   const idle = res.players.find((x) => x.id === ps[1].p.id);
-  assert.equal(idle.wealth, 10_000_000); // untouched cash stays untouched
+  assert.ok(Math.abs(idle.wealth - 10_000_000 * 1.015 ** 12) < 200); // idle cash earns 1.5% per round
   assert.equal(toCents('1.005') >= 100, true);
 });
 
@@ -420,4 +420,31 @@ test('quiz: asked in rounds 3 and 9, answer once, correct answer hidden until an
   assert.equal(G.playerView(game, player).me.quizScore.correct, 1);
   game.round = 4;
   assert.equal(G.playerView(game, player).quiz, null);
+});
+
+test('modes: easy names companies, hard is general, medium mixes; hints only in easy; no repeats vs previous game', async () => {
+  const { pickEvents, EVENT_POOL } = await import('../src/events.js');
+  const easy = EVENT_POOL.filter((e) => e.group === 'easy').length, hard = EVENT_POOL.filter((e) => e.group === 'hard').length;
+  assert.equal(easy, hard);
+  const rng = () => Math.random();
+  assert.ok(pickEvents(rng, 'easy').every((e) => e.group === 'easy'));
+  assert.ok(pickEvents(rng, 'hard').every((e) => e.group === 'hard'));
+  const med = pickEvents(rng, 'medium').map((e) => e.group);
+  assert.ok(med.includes('easy') && med.includes('hard'));
+  const prev = pickEvents(rng, 'hard').map((e) => e.key);
+  assert.equal(pickEvents(rng, 'hard', prev).filter((e) => prev.includes(e.key)).length, 0);
+  const { game } = G.createGame({ code: 'MD', seed: 5 });
+  const { player } = G.addPlayer(game, { name: 'M' });
+  G.setBudget(game, player.id, 100_000);
+  G.setMode(game, 'easy');
+  G.startGame(game); G.endIntro(game);
+  assert.ok(G.playerView(game, player).news.affected.length > 0);
+  const g2 = G.createGame({ code: 'M2', seed: 5, mode: 'hard' }).game;
+  const p2 = G.addPlayer(g2, { name: 'H' }).player;
+  G.setBudget(g2, p2.id, 100_000); G.startGame(g2); G.endIntro(g2);
+  const v = G.playerView(g2, p2);
+  assert.equal(v.news.affected, null);
+  assert.equal(v.news.teaches, '');
+  assert.ok(v.stocks.every((x) => !x.relevant));
+  assert.throws(() => G.setMode(g2, 'easy'), /antes de o jogo/);
 });
