@@ -100,3 +100,14 @@ details summary { cursor: pointer; font-weight: 700; }
 .sechead { display: flex; justify-content: space-between; align-items: center; padding: 8px 4px 0; }
 .stock.rel { border-color: rgba(245,197,107,.7); box-shadow: 0 0 0 1px rgba(245,197,107,.25); }
 #top:has(.backbar) { position: sticky; top: 0; z-index: 30; }
+
+/* ---- ranking movement ---- */
+.mv { font-size: 12px; font-weight: 800; min-width: 30px; text-align: center; }
+.flash { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: rgba(5,10,18,.72); animation: fin .25s ease; }
+.flash-in { width: min(88vw, 380px); background: var(--bg2); border: 2px solid var(--gold); border-radius: 20px; padding: 20px 18px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.6); animation: pop .35s ease; }
+.flash-t { font-weight: 800; font-size: 20px; color: var(--gold); margin-bottom: 12px; }
+.flash-l { font-size: 17px; margin: 10px 0; opacity: 0; transform: translateY(12px); animation: up .45s ease forwards; line-height: 1.35; }
+.flash-me { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); font-size: 17px; }
+@keyframes up { to { opacity: 1; transform: none; } }
+@keyframes fin { from { opacity: 0; } }
+@keyframes pop { from { transform: scale(.85); opacity: 0; } }

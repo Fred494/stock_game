@@ -143,6 +143,8 @@ export function snapshot(game) {
   for (const p of game.players) {
     (game.history[p.id] ||= [])[game.settledThrough] = wealth(p, prices);
   }
+  // Remember everyone's rank after each round, to show movement (arrows) next round.
+  (game.ranks ||= {})[game.settledThrough] = Object.fromEntries(ranking(game).map((r) => [r.p.id, r.rank]));
 }
 
 export function settleRound(game) {
@@ -430,6 +432,8 @@ function leaderboard(game) {
   return ranking(game).map((r) => ({
     id: r.p.id, name: r.p.name, avatar: r.p.avatar, wealth: r.wealth, cash: r.p.cash, ret: r.ret, rank: r.rank,
     start: r.p.startCash, tax: r.p.taxPaid,
+    prev: game.settledThrough >= 1 ? (game.ranks?.[game.settledThrough - 1]?.[r.p.id] ?? null) : null,
+    delta: game.settledThrough >= 1 && game.ranks?.[game.settledThrough - 1]?.[r.p.id] != null ? game.ranks[game.settledThrough - 1][r.p.id] - r.rank : 0,
   }));
 }
 
@@ -483,7 +487,7 @@ export function playerView(game, p) {
     },
     stocks: stocksView(game, p),
     players: game.players.map((x) => ({ id: x.id, name: x.name, avatar: x.avatar })),
-    leaderboard: game.status === 'lobby' ? [] : leaderboard(game).map(({ id, name, avatar, wealth: w, ret, rank }) => ({ id, name, avatar, wealth: w, ret, rank })),
+    leaderboard: game.status === 'lobby' ? [] : leaderboard(game).map(({ id, name, avatar, wealth: w, ret, rank, prev, delta }) => ({ id, name, avatar, wealth: w, ret, rank, prev, delta })),
     lastSettlement: lastSettlement(game),
     myPayout: game.settlements[game.settledThrough]?.payouts?.[p.id] ?? null,
     quiz: quizView(game, p),
@@ -585,7 +589,7 @@ export function resetGame(game) {
   if (game.status === 'lobby') fail('already_lobby', 'O jogo ainda não começou.');
   Object.assign(game, {
     status: 'lobby', phase: 'lobby', round: 0, remainingMs: 0, totalMs: 0, paused: false, speed: 1,
-    settledThrough: 0, countdownMs: null, settlements: {}, history: {}, nextCode: null, finishedAt: null,
+    settledThrough: 0, countdownMs: null, settlements: {}, history: {}, ranks: {}, nextCode: null, finishedAt: null,
     startedAt: null, introDone: false, exclude: (game.market.events || []).map((e) => e.key), market: null, updatedAt: Date.now(),
   });
   game.market = buildMarket(crypto.randomInt(1, 2 ** 31), game.mode || 'medium', game.exclude);

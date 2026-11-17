@@ -448,3 +448,16 @@ test('modes: easy names companies, hard is general, medium mixes; hints only in 
   assert.ok(v.stocks.every((x) => !x.relevant));
   assert.throws(() => G.setMode(g2, 'easy'), /antes de o jogo/);
 });
+
+test('rank movement: delta vs previous round, 0 at start', () => {
+  const { game, ps } = lobby(3);
+  G.startGame(game); G.endIntro(game);
+  assert.ok(G.playerView(game, ps[0].p).leaderboard.every((x) => x.delta === 0));
+  G.advance(game);
+  G.trade(game, ps[0].p, { stockId: 'NVDA', side: 'buy', amount: 8_000_000, requestId: 'x' });
+  G.trade(game, ps[1].p, { stockId: 'KO', side: 'buy', amount: 8_000_000, requestId: 'y' });
+  G.advance(game, { confirm: true });
+  const lb = G.playerView(game, ps[0].p).leaderboard;
+  assert.ok(lb.every((x) => x.prev === 1)); // equal budgets: everyone started tied
+  assert.ok(lb.every((x) => x.delta === x.prev - x.rank));
+});

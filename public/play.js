@@ -34,9 +34,33 @@ async function poll() {
     clockAt = performance.now() + S.remainingMs; clockTotal = Math.max(1, S.totalMs);
     if (key !== sig) { sig = key; render(); }
     if (S.phase !== ui.lastPhase) { onPhaseChange(ui.lastPhase, S.phase); ui.lastPhase = S.phase; }
+    if (ui.flashed === undefined) ui.flashed = S.settled;
+    if (S.phase === 'reaction' && ui.flashed !== S.settled) { ui.flashed = S.settled; rankFlash(); }
   } catch (e) {
     if (e.status === 401 || e.status === 404) { clear(); session = null; S = null; render(); }
   }
+}
+const tiedStart = () => { const lb = S.leaderboard || []; return lb.length > 0 && lb.every((x) => x.prev === lb[0].prev); }; // everyone started level: no movement to show
+const arrow = (p) => (tiedStart() ? '' : p.delta > 0 ? `<span class="mv up">▲${p.delta}</span>` : p.delta < 0 ? `<span class="mv down">▼${-p.delta}</span>` : '<span class="mv muted">–</span>');
+// Short animation at the end of a round: who overtook whom.
+function rankFlash() {
+  const lb = S.leaderboard || [];
+  if (S.round < 1 || !lb.some((p) => p.prev != null)) return;
+  const me = S.me.id, lines = [];
+  for (const a of lb.filter((p) => p.delta > 0)) for (const b of lb.filter((x) => x.prev != null && x.prev < a.prev && x.rank > a.rank)) {
+    const text = a.id === me ? `🚀 Ultrapassaste <b>${esc(b.name)}</b>!` : b.id === me ? `😬 <b>${esc(a.name)}</b> ultrapassou-te!` : `<b>${esc(a.name)}</b> ultrapassou <b>${esc(b.name)}</b>!`;
+    lines.push({ text, mine: a.id === me || b.id === me });
+  }
+  lines.sort((x, y) => y.mine - x.mine);
+  const mine = lb.find((p) => p.id === me);
+  const shown = lines.slice(0, 4);
+  const el = document.createElement('div');
+  el.className = 'flash';
+  el.innerHTML = `<div class="flash-in"><div class="flash-t">Fim da ronda ${S.round}</div>${shown.length ? shown.map((l, i) => `<div class="flash-l" style="animation-delay:${0.25 + i * 0.5}s">${l.text}</div>`).join('') : `<div class="flash-l">${tiedStart() ? 'Primeira classificação do jogo!' : 'Ninguém mudou de posição nesta ronda.'}</div>`}<div class="flash-me">Estás em <b>${mine.rank}.º</b> ${arrow(mine)}</div></div>`;
+  el.onclick = () => el.remove();
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 5000);
+  fx.beep(660, 120, 60);
 }
 function onPhaseChange(from, to) {
   if (!from) return;
@@ -190,7 +214,7 @@ function reactionCard() {
     ${S.myPayout ? `<div class="cd" style="margin-bottom:8px">${esc(POWERUP_INFO[S.me.powerup.type].icon)} O teu ${esc(POWERUP_INFO[S.me.powerup.type].name)} pagou ${eur(S.myPayout)}</div>` : mine ? `<div class="cd" style="margin-bottom:8px">O teu power-up pagou €0 nesta ronda</div>` : ''}
     ${lines.map((m) => `<div class="move">${logo(byId[m.id], 34)}<div class="grow"><b>${esc(byId[m.id].name)}</b> <span class="num ${cls(m.pct)}">${pct(m.pct)}</span><div class="muted" style="font-size:13px">${esc(m.why)}</div></div></div>`).join('')}
   </div>
-  <div class="card" style="margin-top:12px"><h3>Classificação</h3>${S.leaderboard.map((p) => `<div class="lb"><span class="rk">${p.rank}</span><span class="avatar" style="background:${esc(p.avatar)}">${esc(p.name[0].toUpperCase())}</span><b class="grow">${esc(p.name)}${p.id === S.me.id ? ' (tu)' : ''}</b><span class="num">${eur0(p.wealth)}</span><span class="num ${cls(p.ret)}" style="width:68px;text-align:right">${pct(p.ret, 1)}</span></div>`).join('')}</div>`;
+  <div class="card" style="margin-top:12px"><h3>Classificação</h3>${S.leaderboard.map((p) => `<div class="lb"><span class="rk">${p.rank}</span>${arrow(p)}<span class="avatar" style="background:${esc(p.avatar)}">${esc(p.name[0].toUpperCase())}</span><b class="grow">${esc(p.name)}${p.id === S.me.id ? ' (tu)' : ''}</b><span class="num">${eur0(p.wealth)}</span><span class="num ${cls(p.ret)}" style="width:68px;text-align:right">${pct(p.ret, 1)}</span></div>`).join('')}</div>`;
 }
 
 function powerupCard() {
